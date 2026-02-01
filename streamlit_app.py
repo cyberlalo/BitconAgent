@@ -238,6 +238,62 @@ with main_container:
             else:
                 st.info("Volatility data not available")
         
+        st.subheader("💡 Investment Advice")
+        
+        # Botão para gerar conselho
+        if st.button("Generate Investment Advice", type="secondary"):
+            with st.spinner("Analyzing market conditions..."):
+                advice = agent.investment_advice()
+                
+                if advice:
+                    # Mostrar recomendação principal
+                    col_rec1, col_rec2, col_rec3 = st.columns(3)
+                    
+                    with col_rec1:
+                        st.metric(
+                            "Recommendation",
+                            advice['recommendation'],
+                            help="Suggested action based on analysis"
+                        )
+                    
+                    with col_rec2:
+                        risk_color = {
+                            'Very High': 'red',
+                            'High': 'orange',
+                            'Medium': 'yellow',
+                            'Low': 'green'
+                        }.get(advice['risk_level'], 'gray')
+                        
+                        st.markdown(f"""
+                        <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
+                        <strong>Risk Level:</strong> {advice['risk_level']}<br>
+                        <strong>Confidence:</strong> {int(advice['confidence']*100)}%
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_rec3:
+                        st.metric(
+                            "Time Horizon",
+                            advice['time_horizon'],
+                            help="Suggested investment timeframe"
+                        )
+                    
+                    # Explicação detalhada
+                    with st.expander("📋 Detailed Analysis", expanded=True):
+                        st.write("**Key Factors Considered:**")
+                        for point in advice['key_points']:
+                            st.write(f"• {point}")
+                        
+                        st.write("\n**Final Assessment:**")
+                        st.info(advice['summary'])
+                        
+                        # Adicionar disclaimer
+                        st.warning("""
+                        **Disclaimer:** This is automated analysis, not financial advice. 
+                        Cryptocurrency investments are high risk. Always do your own research 
+                        and consider consulting with a financial advisor.
+                        """)
+        
         st.download_button(
             label="Export Data (CSV)",
             data=data.to_csv(index=False).encode('utf-8'),
@@ -255,11 +311,12 @@ with main_container:
         4. Provide downloadable results
         """)
 
-    st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center;'>"
-        "Bitcoin Agent by Eduardo Araujo © 2026<br>"
-        "<small>AI-powered Bitcoin analysis and prediction</small>"
-        "</div>",
-        unsafe_allow_html=True
+# === RODAPÉ SIMPLIFICADO ===
+st.markdown("---")
+st.markdown(
+    "<div style='text-align: center;'>"
+    "Bitcoin Agent by Eduardo Araujo © 2026<br>"
+    "<small>AI-powered Bitcoin analysis and prediction</small>"
+    "</div>",
+    unsafe_allow_html=True
 )

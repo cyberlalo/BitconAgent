@@ -1,4 +1,5 @@
-"""Agente de IA para análise do Bitcoin
+"""
+Agente de IA para análise do Bitcoin
 Busca dados históricos e encontra funções de aproximação
 """
 
@@ -286,6 +287,160 @@ class BitcoinAnalysisAgent:
         self.results = results
         return results
 
+    def investment_advice(self):
+        """Gera conselhos de investimento baseado na análise"""
+        print("\n" + "="*60)
+        print("INVESTMENT ADVICE")
+        print("="*60)
+        
+        if not hasattr(self, 'results') or self.prices is None:
+            print("No analysis available. Run find_approximations() first.")
+            return None
+        
+        advice = {
+            'summary': '',
+            'risk_level': 'Medium',
+            'recommendation': 'Hold',
+            'confidence': 0.5,
+            'time_horizon': 'Medium-term',
+            'key_points': []
+        }
+        
+        # Análise de tendência
+        if 'linear' in self.results:
+            slope = self.results['linear']['params']['slope']
+            if slope > 100:
+                trend = "Strong Bullish"
+                advice['key_points'].append(f"Strong upward trend: +${slope:.2f}/day")
+                advice['recommendation'] = 'Consider Buying'
+                advice['confidence'] = 0.7
+            elif slope > 20:
+                trend = "Bullish"
+                advice['key_points'].append(f"Upward trend: +${slope:.2f}/day")
+                advice['recommendation'] = 'Hold/Buy Dips'
+                advice['confidence'] = 0.6
+            elif slope < -100:
+                trend = "Strong Bearish"
+                advice['key_points'].append(f"Strong downward trend: ${slope:.2f}/day")
+                advice['recommendation'] = 'Consider Selling'
+                advice['confidence'] = 0.6
+            elif slope < -20:
+                trend = "Bearish"
+                advice['key_points'].append(f"Downward trend: ${slope:.2f}/day")
+                advice['recommendation'] = 'Wait/Caution'
+                advice['confidence'] = 0.5
+            else:
+                trend = "Sideways"
+                advice['key_points'].append("Sideways movement - no clear trend")
+                advice['recommendation'] = 'Hold'
+                advice['confidence'] = 0.4
+        
+        # Análise de volatilidade
+        if 'volatility' in self.results:
+            vol = self.results['volatility']['daily_volatility']
+            if vol > 8:
+                advice['risk_level'] = 'Very High'
+                advice['key_points'].append(f"Very high volatility: {vol:.1f}% daily")
+                advice['time_horizon'] = 'Short-term only'
+            elif vol > 5:
+                advice['risk_level'] = 'High'
+                advice['key_points'].append(f"High volatility: {vol:.1f}% daily")
+                advice['time_horizon'] = 'Short to Medium-term'
+            elif vol > 2:
+                advice['risk_level'] = 'Medium'
+                advice['key_points'].append(f"Moderate volatility: {vol:.1f}% daily")
+                advice['time_horizon'] = 'Medium-term'
+            else:
+                advice['risk_level'] = 'Low'
+                advice['key_points'].append(f"Low volatility: {vol:.1f}% daily")
+                advice['time_horizon'] = 'Long-term'
+        
+        # Análise estocástica
+        if 'stochastic' in self.results:
+            k = self.results['stochastic']['current_k']
+            if k > 90:
+                advice['key_points'].append(f"Extremely overbought (Stochastic: {k:.1f})")
+                advice['recommendation'] = 'Consider Taking Profits'
+                if advice['confidence'] < 0.6:
+                    advice['confidence'] = 0.65
+            elif k > 80:
+                advice['key_points'].append(f"Overbought (Stochastic: {k:.1f})")
+                if advice['recommendation'] == 'Consider Buying':
+                    advice['recommendation'] = 'Wait for Pullback'
+            elif k < 10:
+                advice['key_points'].append(f"Extremely oversold (Stochastic: {k:.1f})")
+                advice['recommendation'] = 'Consider Accumulating'
+                if advice['confidence'] < 0.6:
+                    advice['confidence'] = 0.65
+            elif k < 20:
+                advice['key_points'].append(f"Oversold (Stochastic: {k:.1f})")
+                if advice['recommendation'] == 'Consider Selling':
+                    advice['recommendation'] = 'Hold/Accumulate'
+        
+        # Análise de R² (qualidade do modelo)
+        best_r2 = 0
+        for key, value in self.results.items():
+            r2 = value.get('r_squared', value.get('r2', 0))
+            if r2 > best_r2:
+                best_r2 = r2
+        
+        if best_r2 > 0.8:
+            advice['key_points'].append(f"High model accuracy (R²={best_r2:.2f})")
+            advice['confidence'] = min(advice['confidence'] + 0.15, 0.9)
+        elif best_r2 > 0.6:
+            advice['key_points'].append(f"Moderate model accuracy (R²={best_r2:.2f})")
+            advice['confidence'] = min(advice['confidence'] + 0.1, 0.8)
+        else:
+            advice['key_points'].append(f"Low model accuracy (R²={best_r2:.2f})")
+            advice['confidence'] = max(advice['confidence'] - 0.1, 0.3)
+        
+        # Preço atual vs médias
+        current_price = self.prices[-1]
+        if len(self.prices) > 30:
+            ma_30 = np.mean(self.prices[-30:])
+            if current_price > ma_30 * 1.2:
+                advice['key_points'].append("Price >20% above 30-day average")
+                if advice['recommendation'] == 'Consider Buying':
+                    advice['recommendation'] = 'Wait for Correction'
+            elif current_price < ma_30 * 0.8:
+                advice['key_points'].append("Price <20% below 30-day average - potential opportunity")
+                if advice['recommendation'] in ['Hold', 'Wait']:
+                    advice['recommendation'] = 'Consider Dollar-Cost Averaging'
+        
+        # Gerar resumo final
+        confidence_percent = int(advice['confidence'] * 100)
+        
+        advice['summary'] = (
+            f"Recommendation: {advice['recommendation']}\n"
+            f"Risk Level: {advice['risk_level']}\n"
+            f"Time Horizon: {advice['time_horizon']}\n"
+            f"Confidence: {confidence_percent}%\n"
+            f"\nKey Factors:\n" + "\n".join(f"• {point}" for point in advice['key_points'])
+        )
+        
+        # Imprimir no console
+        print(f"\nFINAL RECOMMENDATION: {advice['recommendation']}")
+        print(f"Risk Level: {advice['risk_level']}")
+        print(f"Time Horizon: {advice['time_horizon']}")
+        print(f"Confidence: {confidence_percent}%")
+        print(f"\nKey Analysis Points:")
+        for point in advice['key_points']:
+            print(f"  • {point}")
+        
+        if advice['recommendation'] in ['Consider Buying', 'Consider Accumulating', 'Buy Dips']:
+            print(f"\nACTION: Could be a good entry point")
+            print("   Consider dollar-cost averaging strategy")
+        elif advice['recommendation'] in ['Consider Selling', 'Consider Taking Profits']:
+            print(f"\nACTION: Consider profit-taking")
+            print("   Set stop-loss orders if holding")
+        else:
+            print(f"\nACTION: Maintain current position")
+            print("   Monitor key levels for changes")
+        
+        print("="*60)
+        
+        return advice
+
     def visualize(self, save_path='bitcoin_analysis.png'):
         """Cria visualização das aproximações"""
         print(f"\nGenerating visualization...")
@@ -294,7 +449,92 @@ class BitcoinAnalysisAgent:
             print("Run fetch_bitcoin_data() and find_approximations() first.")
             return
 
-        return "Visualization would be saved to: " + save_path
+        # Criar figura
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle('Bitcoin Analysis - Mathematical Approximations', fontsize=16, fontweight='bold')
+
+        x = np.arange(len(self.prices))
+        dates = self.dates
+
+        # Plot 1: Dados reais + Linear + Polinomial
+        ax1 = axes[0, 0]
+        ax1.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        
+        if 'linear' in self.results:
+            y_linear = self.results['linear']['prediction'](x)
+            ax1.plot(dates, y_linear, 'r--', label='Linear', linewidth=2)
+        
+        if 'polynomial' in self.results:
+            y_poly = self.results['polynomial']['prediction'](x)
+            ax1.plot(dates, y_poly, 'g--', label='Polynomial', linewidth=2)
+        
+        ax1.set_title('Linear vs Polynomial Trend')
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Price (USD)')
+        ax1.legend(fontsize=8)
+        ax1.grid(True, alpha=0.3)
+        ax1.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+        ax1.xaxis.set_major_locator(mdates.AutoDateLocator())
+        plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
+
+        # Plot 2: Polinomial + Senoidal
+        ax2 = axes[0, 1]
+        ax2.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        
+        if 'poly_sine' in self.results:
+            y_poly_sine = self.results['poly_sine']['prediction'](x)
+            ax2.plot(dates, y_poly_sine, 'purple', linestyle='--', label='Polynomial+Sine', linewidth=2)
+        
+        ax2.set_title('Polynomial + Seasonal Cycles')
+        ax2.set_xlabel('Date')
+        ax2.set_ylabel('Price (USD)')
+        ax2.legend(fontsize=8)
+        ax2.grid(True, alpha=0.3)
+        ax2.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+        ax2.xaxis.set_major_locator(mdates.AutoDateLocator())
+        plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
+
+        # Plot 3: Exponencial
+        ax3 = axes[1, 0]
+        ax3.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        
+        if 'exponential' in self.results:
+            y_exp = self.results['exponential']['prediction'](x)
+            ax3.plot(dates, y_exp, 'm--', label='Exponential', linewidth=2)
+        
+        ax3.set_title('Exponential Growth')
+        ax3.set_xlabel('Date')
+        ax3.set_ylabel('Price (USD)')
+        ax3.legend(fontsize=8)
+        ax3.grid(True, alpha=0.3)
+        ax3.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+        ax3.xaxis.set_major_locator(mdates.AutoDateLocator())
+        plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
+
+        # Plot 4: Média Móvel
+        ax4 = axes[1, 1]
+        ax4.plot(dates, self.prices, 'b-', alpha=0.3, label='Real Price', linewidth=1)
+        
+        if 'moving_average' in self.results:
+            ma_values = self.results['moving_average']['values']
+            ax4.plot(dates, ma_values, 'orange', label='Moving Average', linewidth=2)
+        
+        ax4.set_title('Moving Average Trend')
+        ax4.set_xlabel('Date')
+        ax4.set_ylabel('Price (USD)')
+        ax4.legend(fontsize=8)
+        ax4.grid(True, alpha=0.3)
+        ax4.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
+        ax4.xaxis.set_major_locator(mdates.AutoDateLocator())
+        plt.setp(ax4.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
+
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Graph saved to: {save_path}")
+        
+        plt.show()
+        
+        return save_path
 
     def generate_report(self):
         """Gera relatório completo da análise"""
@@ -338,3 +578,32 @@ class BitcoinAnalysisAgent:
                 print(f"Low volatility ({vol:.2f}% daily) - Stable period")
 
         print("\n" + "="*60)
+
+def main():
+    """Função principal - executa o agente"""
+    print("Starting Bitcoin Analysis Agent\n")
+
+    # Criar agente
+    agent = BitcoinAnalysisAgent()
+
+    # Buscar dados
+    data = agent.fetch_bitcoin_data(days=180)
+    if data is None:
+        print("\nUsing simulated data for demonstration.")
+        # Aqui você pode adicionar dados simulados se necessário
+        return
+
+    # Encontrar aproximações
+    agent.find_approximations()
+
+    # Gerar conselhos de investimento
+    agent.investment_advice()
+
+    # Relatório final
+    agent.generate_report()
+
+    print("\nAnalysis complete!")
+
+
+if __name__ == "__main__":
+    main()
