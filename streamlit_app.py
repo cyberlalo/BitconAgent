@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import plotly.graph_objects as go
-import plotly.express as px
 from bitcoin_agent import BitcoinAnalysisAgent
 
 st.set_page_config(
@@ -62,10 +61,14 @@ with main_container:
                 st.session_state.data = data
                 
                 with st.spinner("Analyzing patterns..."):
-                    results = agent.find_approximations()
-                    st.session_state.results = results
-                    st.session_state.analysis_done = True
-                    st.success("Analysis completed successfully!")
+                    try:
+                        results = agent.find_approximations()
+                        st.session_state.results = results
+                        st.session_state.analysis_done = True
+                        st.success("Analysis completed successfully!")
+                    except Exception as e:
+                        st.error(f"Error in analysis: {str(e)}")
+                        st.session_state.analysis_done = False
     
     if 'data' in st.session_state and st.session_state.get('analysis_done', False):
         data = st.session_state.data
@@ -74,31 +77,34 @@ with main_container:
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            current_price = float(data['price'].iloc[-1])
-            initial_price = float(data['price'].iloc[0])
-            delta = ((current_price / initial_price - 1) * 100)
-            st.metric(
-                "Current Price",
-                f"${current_price:,.2f}",
-                f"{delta:+.2f}%"
-            )
+            try:
+                current_price = float(data['price'].iloc[-1])
+                initial_price = float(data['price'].iloc[0])
+                delta = ((current_price / initial_price - 1) * 100)
+                st.metric(
+                    "Current Price",
+                    f"${current_price:,.2f}",
+                    f"{delta:+.2f}%"
+                )
+            except:
+                st.metric("Current Price", "N/A")
         
         with col2:
-            if 'volatility' in results:
+            if results and 'volatility' in results:
                 vol = results['volatility']['daily_volatility']
                 st.metric("Daily Volatility", f"{vol:.2f}%")
             else:
                 st.metric("Daily Volatility", "N/A")
         
         with col3:
-            if 'linear' in results:
+            if results and 'linear' in results:
                 slope = results['linear']['params']['slope']
                 st.metric("Daily Trend", f"${slope:.2f}")
             else:
                 st.metric("Daily Trend", "N/A")
         
         with col4:
-            if 'stochastic' in results:
+            if results and 'stochastic' in results:
                 k = results['stochastic']['current_k']
                 status = "Oversold" if k < 20 else "Overbought" if k > 80 else "Neutral"
                 st.metric("Stochastic %K", f"{k:.1f} ({status})")
@@ -124,7 +130,7 @@ with main_container:
             colors = ['red', 'green', 'purple', 'orange', 'cyan']
             color_idx = 0
             
-            if 'Linear' in modelos and 'linear' in results:
+            if 'Linear' in modelos and results and 'linear' in results:
                 pred = results['linear']['prediction'](np.arange(len(data)))
                 fig1.add_trace(go.Scatter(
                     x=data['date'],
@@ -135,7 +141,7 @@ with main_container:
                 ))
                 color_idx += 1
             
-            if 'Polynomial' in modelos and 'polynomial' in results:
+            if 'Polynomial' in modelos and results and 'polynomial' in results:
                 pred = results['polynomial']['prediction'](np.arange(len(data)))
                 fig1.add_trace(go.Scatter(
                     x=data['date'],
@@ -146,7 +152,7 @@ with main_container:
                 ))
                 color_idx += 1
             
-            if 'Exponential' in modelos and 'exponential' in results:
+            if 'Exponential' in modelos and results and 'exponential' in results:
                 pred = results['exponential']['prediction'](np.arange(len(data)))
                 fig1.add_trace(go.Scatter(
                     x=data['date'],
@@ -157,7 +163,7 @@ with main_container:
                 ))
                 color_idx += 1
             
-            if 'Polynomial+Sine' in modelos and 'poly_sine' in results:
+            if 'Polynomial+Sine' in modelos and results and 'poly_sine' in results:
                 pred = results['poly_sine']['prediction'](np.arange(len(data)))
                 fig1.add_trace(go.Scatter(
                     x=data['date'],
@@ -168,16 +174,19 @@ with main_container:
                 ))
                 color_idx += 1
             
-            if 'Moving Average' in modelos and 'moving_average' in results:
+            if 'Moving Average' in modelos and results and 'moving_average' in results:
                 ma_values = results['moving_average']['values']
                 window = results['moving_average']['window']
-                fig1.add_trace(go.Scatter(
-                    x=data['date'],
-                    y=ma_values,
-                    mode='lines',
-                    name=f'MA({window} days)',
-                    line=dict(color=colors[color_idx], width=2)
-                ))
+                # Filter out NaN values
+                valid_mask = ~np.isnan(ma_values)
+                if np.any(valid_mask):
+                    fig1.add_trace(go.Scatter(
+                        x=data['date'][valid_mask],
+                        y=ma_values[valid_mask],
+                        mode='lines',
+                        name=f'MA({window} days)',
+                        line=dict(color=colors[color_idx], width=2)
+                    ))
             
             fig1.update_layout(
                 title="Bitcoin: Price vs Approximation Models",
@@ -188,10 +197,10 @@ with main_container:
                 height=500
             )
             
-            st.plotly_chart(fig1, use_container_width=True)
+            st.plotly_chart(fig1, width='stretch')
         
         # Gráfico 2: Oscilador Estocástico
-        if 'Stochastic Oscillator' in modelos and 'stochastic' in results:
+        if 'Stochastic Oscillator' in modelos and results and 'stochastic' in results:
             st.subheader("Stochastic Oscillator Analysis")
             
             stoch = results['stochastic']
@@ -199,7 +208,7 @@ with main_container:
             stoch_k = stoch.get('k', [])
             stoch_d = stoch.get('d', [])
             
-            if stoch_dates and stoch_k and stoch_d:
+            if stoch_dates and stoch_k and stoch_d and len(stoch_dates) == len(stoch_k) == len(stoch_d):
                 fig2 = go.Figure()
                 
                 # %K line (blue)
@@ -223,27 +232,19 @@ with main_container:
                 # Overbought/Oversold zones
                 fig2.add_hrect(y0=80, y1=100, 
                              fillcolor="rgba(255,0,0,0.1)", 
-                             line_width=0, 
-                             annotation_text="Overbought Zone",
-                             annotation_position="top left")
+                             line_width=0)
                 
                 fig2.add_hrect(y0=0, y1=20, 
                              fillcolor="rgba(0,255,0,0.1)", 
-                             line_width=0,
-                             annotation_text="Oversold Zone",
-                             annotation_position="bottom left")
+                             line_width=0)
                 
                 # Overbought line
                 fig2.add_hline(y=80, line_dash="dash", 
-                             line_color="gray", 
-                             annotation_text="80 - Overbought",
-                             annotation_position="top right")
+                             line_color="gray")
                 
                 # Oversold line
                 fig2.add_hline(y=20, line_dash="dash", 
-                             line_color="gray",
-                             annotation_text="20 - Oversold",
-                             annotation_position="bottom right")
+                             line_color="gray")
                 
                 # Current values markers
                 current_k = stoch.get('current_k', 0)
@@ -333,7 +334,7 @@ with main_container:
                     annotations=annotations
                 )
                 
-                st.plotly_chart(fig2, use_container_width=True)
+                st.plotly_chart(fig2, width='stretch')
                 
                 # Stochastic insights
                 stoch_col1, stoch_col2, stoch_col3 = st.columns(3)
@@ -367,26 +368,27 @@ with main_container:
                         st.info("**NO CROSSOVER**")
                         st.write("Wait for clearer signal")
             else:
-                st.warning("Stochastic oscillator data not available")
+                st.warning("Stochastic oscillator data not available or incomplete")
         
         st.subheader("Model Results")
         
         resultados_df = []
-        for key, value in results.items():
-            if key in ['linear', 'polynomial', 'exponential', 'poly_sine']:
-                r2 = value.get('r_squared', value.get('r2', 0))
-                resultados_df.append({
-                    'Model': key.upper(),
-                    'Function': value.get('function', 'N/A')[:80] + '...' if len(value.get('function', '')) > 80 else value.get('function', 'N/A'),
-                    'R²': f"{r2:.4f}",
-                    'Fit': 'Excellent' if r2 > 0.8 
-                          else 'Good' if r2 > 0.6 
-                          else 'Moderate' if r2 > 0.4 
-                          else 'Low'
-                })
+        if results:
+            for key, value in results.items():
+                if key in ['linear', 'polynomial', 'exponential', 'poly_sine']:
+                    r2 = value.get('r_squared', value.get('r2', 0))
+                    resultados_df.append({
+                        'Model': key.upper(),
+                        'Function': str(value.get('function', 'N/A'))[:80] + '...' if len(str(value.get('function', ''))) > 80 else str(value.get('function', 'N/A')),
+                        'R²': f"{r2:.4f}",
+                        'Fit': 'Excellent' if r2 > 0.8 
+                              else 'Good' if r2 > 0.6 
+                              else 'Moderate' if r2 > 0.4 
+                              else 'Low'
+                    })
         
         if resultados_df:
-            st.dataframe(pd.DataFrame(resultados_df), use_container_width=True)
+            st.dataframe(pd.DataFrame(resultados_df), width='stretch')
         else:
             st.info("No model results available.")
         
@@ -397,9 +399,8 @@ with main_container:
         with col_ins1:
             st.info("**Technical Analysis**")
             
-            if 'stochastic' in results:
+            if results and 'stochastic' in results:
                 stoch = results['stochastic']
-                k = stoch['current_k']
                 condition = stoch.get('condition', 'neutral')
                 
                 if condition == 'overbought':
@@ -421,7 +422,7 @@ with main_container:
         with col_ins2:
             st.info("**Risk and Volatility**")
             
-            if 'volatility' in results:
+            if results and 'volatility' in results:
                 vol = results['volatility']['daily_volatility']
                 if vol > 5:
                     st.error(f"High risk - Volatility: {vol:.1f}% daily")
@@ -457,30 +458,34 @@ with main_container:
                             'High': 'orange',
                             'Medium': 'yellow',
                             'Low': 'green'
-                        }.get(advice['risk_level'], 'gray')
+                        }.get(advice.get('risk_level', 'Medium'), 'gray')
                         
                         st.markdown(f"""
                         <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
-                        <strong>Risk Level:</strong> {advice['risk_level']}<br>
-                        <strong>Confidence:</strong> {int(advice['confidence']*100)}%
+                        <strong>Risk Level:</strong> {advice.get('risk_level', 'N/A')}<br>
+                        <strong>Confidence:</strong> {int(advice.get('confidence', 0)*100)}%
                         </div>
                         """, unsafe_allow_html=True)
                     
                     with col_rec3:
                         st.metric(
                             "Time Horizon",
-                            advice['time_horizon'],
+                            advice.get('time_horizon', 'N/A'),
                             help="Suggested investment timeframe"
                         )
                     
                     # Explicação detalhada
                     with st.expander("Detailed Analysis", expanded=True):
                         st.write("**Key Factors Considered:**")
-                        for point in advice['key_points']:
-                            st.write(f"• {point}")
+                        key_points = advice.get('key_points', [])
+                        if key_points:
+                            for point in key_points:
+                                st.write(f"• {point}")
+                        else:
+                            st.write("No key points available")
                         
                         st.write("\n**Final Assessment:**")
-                        st.info(advice['summary'])
+                        st.info(advice.get('summary', 'No summary available'))
                         
                         # Adicionar disclaimer
                         st.warning("""
