@@ -1,6 +1,6 @@
 """
-Agente de IA para análise do Bitcoin
-Busca dados históricos e encontra funções de aproximação
+Bitcoin Analysis Agent
+Historical data analysis and mathematical approximation functions
 """
 
 import requests
@@ -18,14 +18,14 @@ class BitcoinAnalysisAgent:
         self.data = None
         self.prices = None
         self.dates = None
-        print("Bitcoin Analysis Agent initialized!")
+        print("Bitcoin Analysis Agent initialized")
 
     def fetch_bitcoin_data(self, days=365):
-        """Busca dados históricos do Bitcoin usando API pública"""
-        print(f"\nFetching data for the last {days} days...")
+        """Fetch historical Bitcoin data using public API"""
+        print(f"Fetching data for the last {days} days...")
 
         try:
-            url = f"https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
+            url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
             params = {
                 'vs_currency': 'usd',
                 'days': days,
@@ -48,7 +48,7 @@ class BitcoinAnalysisAgent:
             self.prices = np.array(prices)
             self.dates = dates
 
-            print(f"Data obtained! {len(prices)} price points")
+            print(f"Data obtained: {len(prices)} price points")
             print(f"Period: {dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}")
             print(f"Initial price: ${prices[0]:,.2f}")
             print(f"Final price: ${prices[-1]:,.2f}")
@@ -61,8 +61,8 @@ class BitcoinAnalysisAgent:
             return None
 
     def find_approximations(self):
-        """Encontra diferentes funções que aproximam a flutuação"""
-        print("\nAnalyzing patterns and finding approximations...\n")
+        """Find different functions that approximate price fluctuations"""
+        print("Analyzing patterns and finding approximations...")
 
         if self.prices is None:
             print("No data available. Run fetch_bitcoin_data() first.")
@@ -73,8 +73,8 @@ class BitcoinAnalysisAgent:
 
         results = {}
 
-        # 1. Regressão Linear
-        print("LINEAR TREND")
+        # 1. Linear Regression
+        print("\nLINEAR TREND ANALYSIS")
         try:
             slope, intercept, r_value, p_value, std_err = stats.linregress(x, y)
             linear_func = lambda x: slope * x + intercept
@@ -86,12 +86,13 @@ class BitcoinAnalysisAgent:
             }
             print(f"Function: f(x) = {slope:.2f}x + {intercept:.2f}")
             print(f"R² = {r_value**2:.4f}")
-            print(f"Trend: {'Up' if slope > 0 else 'Down'} (${slope:.2f}/day)")
+            print(f"Trend direction: {'Up' if slope > 0 else 'Down'}")
+            print(f"Daily change: ${slope:.2f}")
         except Exception as e:
             print(f"Linear regression error: {e}")
 
-        # 2. Regressão Polinomial (grau 2)
-        print("\nPOLYNOMIAL TREND (degree 2)")
+        # 2. Polynomial Regression (degree 2)
+        print("\nPOLYNOMIAL TREND ANALYSIS (degree 2)")
         try:
             coeffs = np.polyfit(x, y, 2)
             poly_func = np.poly1d(coeffs)
@@ -108,13 +109,9 @@ class BitcoinAnalysisAgent:
         except Exception as e:
             print(f"Polynomial regression error: {e}")
 
-        # 3. Regressão Polinomial + Senoidal
-        print("\nPOLYNOMIAL + SEASONAL CYCLES")
+        # 3. Polynomial + Sinusoidal Regression
+        print("\nPOLYNOMIAL + SEASONAL CYCLES ANALYSIS")
         try:
-            best_r2 = -np.inf
-            best_result = None
-            
-            # Configuração simplificada
             cycle_period = 45
             poly_degree = 3
             
@@ -129,18 +126,14 @@ class BitcoinAnalysisAgent:
                 sine_val = A * np.sin(2 * np.pi * x / cycle_period + phi)
                 return poly_val + sine_val
             
-            # Valores iniciais
             p0_poly = np.polyfit(x, y, poly_degree)
             p0 = list(p0_poly)[::-1] + [1000.0, 0.0]
             
-            # Ajustar
             popt, pcov = curve_fit(poly_sine_func, x, y, p0=p0, maxfev=5000)
             
-            # Calcular R²
             y_pred = poly_sine_func(x, *popt)
             r2 = 1 - (np.sum((y - y_pred)**2) / np.sum((y - np.mean(y))**2))
             
-            # Construir string da função
             poly_terms = []
             for i, coef in enumerate(popt[:poly_degree+1]):
                 if i == 0:
@@ -172,7 +165,6 @@ class BitcoinAnalysisAgent:
             
         except Exception as e:
             print(f"Polynomial+sine adjustment error: {e}")
-            # Fallback para polinomial de grau 4
             try:
                 coeffs_high = np.polyfit(x, y, 4)
                 poly_high_func = np.poly1d(coeffs_high)
@@ -191,8 +183,8 @@ class BitcoinAnalysisAgent:
             except:
                 print("Could not fit polynomial+sine model")
 
-        # 4. Regressão Exponencial
-        print("\nEXPONENTIAL GROWTH")
+        # 4. Exponential Regression
+        print("\nEXPONENTIAL GROWTH ANALYSIS")
         try:
             def exponential(x, a, b):
                 return a * np.exp(b * x)
@@ -211,22 +203,22 @@ class BitcoinAnalysisAgent:
             }
             print(f"Function: f(x) = {popt[0]:.2f} × e^({popt[1]:.6f}x) + {np.min(y)-1:.2f}")
             print(f"R² = {r2_exp:.4f}")
-            print(f"Growth rate: {(popt[1]*100):.4f}%/day")
+            print(f"Daily growth rate: {(popt[1]*100):.4f}%")
         except Exception as e:
             print(f"Exponential regression error: {e}")
 
-        # 5. Média Móvel
-        print("\nMOVING AVERAGE (30 days)")
+        # 5. Moving Average
+        print("\nMOVING AVERAGE ANALYSIS")
         window = min(30, len(y)//3)
         ma = pd.Series(y).rolling(window=window).mean()
-        print(f"Smoothing with {window} days window")
+        print(f"Moving average window: {window} days")
         results['moving_average'] = {
             'function': f'MA({window} days)',
             'values': ma.values,
             'window': window
         }
 
-        # 6. Volatilidade
+        # 6. Volatility Analysis
         print("\nVOLATILITY ANALYSIS")
         returns = np.diff(y) / y[:-1] * 100
         volatility = np.std(returns)
@@ -238,8 +230,8 @@ class BitcoinAnalysisAgent:
         print(f"Annualized volatility: {volatility * np.sqrt(365):.2f}%")
         print(f"Average daily return: {np.mean(returns):.3f}%")
 
-        # 7. Oscilador Estocástico
-        print("\nSTOCHASTIC OSCILLATOR")
+        # 7. Stochastic Oscillator
+        print("\nSTOCHASTIC OSCILLATOR ANALYSIS")
         period = 14
         stoch_k = []
         stoch_d = []
@@ -273,22 +265,22 @@ class BitcoinAnalysisAgent:
         current_k = stoch_k[-1] if stoch_k else 0
         current_d = stoch_d[-1] if stoch_d else 0
 
-        print(f"Period: {period} days")
-        print(f"Current %K: {current_k:.2f}")
-        print(f"Current %D: {current_d:.2f}")
+        print(f"Analysis period: {period} days")
+        print(f"Current %K value: {current_k:.2f}")
+        print(f"Current %D value: {current_d:.2f}")
 
         if current_k > 80:
-            print(f"Signal: OVERBOUGHT (K > 80)")
+            print(f"Market condition: OVERBOUGHT (K > 80)")
         elif current_k < 20:
-            print(f"Signal: OVERSOLD (K < 20)")
+            print(f"Market condition: OVERSOLD (K < 20)")
         else:
-            print(f"Signal: NEUTRAL (20 < K < 80)")
+            print(f"Market condition: NEUTRAL (20 < K < 80)")
 
         self.results = results
         return results
 
     def investment_advice(self):
-        """Gera conselhos de investimento baseado na análise"""
+        """Generate investment advice based on analysis"""
         print("\n" + "="*60)
         print("INVESTMENT ADVICE")
         print("="*60)
@@ -306,36 +298,31 @@ class BitcoinAnalysisAgent:
             'key_points': []
         }
         
-        # Análise de tendência
+        # Trend analysis
         if 'linear' in self.results:
             slope = self.results['linear']['params']['slope']
             if slope > 100:
-                trend = "Strong Bullish"
                 advice['key_points'].append(f"Strong upward trend: +${slope:.2f}/day")
                 advice['recommendation'] = 'Consider Buying'
                 advice['confidence'] = 0.7
             elif slope > 20:
-                trend = "Bullish"
                 advice['key_points'].append(f"Upward trend: +${slope:.2f}/day")
                 advice['recommendation'] = 'Hold/Buy Dips'
                 advice['confidence'] = 0.6
             elif slope < -100:
-                trend = "Strong Bearish"
                 advice['key_points'].append(f"Strong downward trend: ${slope:.2f}/day")
                 advice['recommendation'] = 'Consider Selling'
                 advice['confidence'] = 0.6
             elif slope < -20:
-                trend = "Bearish"
                 advice['key_points'].append(f"Downward trend: ${slope:.2f}/day")
                 advice['recommendation'] = 'Wait/Caution'
                 advice['confidence'] = 0.5
             else:
-                trend = "Sideways"
                 advice['key_points'].append("Sideways movement - no clear trend")
                 advice['recommendation'] = 'Hold'
                 advice['confidence'] = 0.4
         
-        # Análise de volatilidade
+        # Volatility analysis
         if 'volatility' in self.results:
             vol = self.results['volatility']['daily_volatility']
             if vol > 8:
@@ -355,7 +342,7 @@ class BitcoinAnalysisAgent:
                 advice['key_points'].append(f"Low volatility: {vol:.1f}% daily")
                 advice['time_horizon'] = 'Long-term'
         
-        # Análise estocástica
+        # Stochastic analysis
         if 'stochastic' in self.results:
             k = self.results['stochastic']['current_k']
             if k > 90:
@@ -377,7 +364,7 @@ class BitcoinAnalysisAgent:
                 if advice['recommendation'] == 'Consider Selling':
                     advice['recommendation'] = 'Hold/Accumulate'
         
-        # Análise de R² (qualidade do modelo)
+        # Model accuracy analysis
         best_r2 = 0
         for key, value in self.results.items():
             r2 = value.get('r_squared', value.get('r2', 0))
@@ -394,7 +381,7 @@ class BitcoinAnalysisAgent:
             advice['key_points'].append(f"Low model accuracy (R²={best_r2:.2f})")
             advice['confidence'] = max(advice['confidence'] - 0.1, 0.3)
         
-        # Preço atual vs médias
+        # Current price vs averages
         current_price = self.prices[-1]
         if len(self.prices) > 30:
             ma_30 = np.mean(self.prices[-30:])
@@ -407,7 +394,7 @@ class BitcoinAnalysisAgent:
                 if advice['recommendation'] in ['Hold', 'Wait']:
                     advice['recommendation'] = 'Consider Dollar-Cost Averaging'
         
-        # Gerar resumo final
+        # Generate final summary
         confidence_percent = int(advice['confidence'] * 100)
         
         advice['summary'] = (
@@ -418,7 +405,7 @@ class BitcoinAnalysisAgent:
             f"\nKey Factors:\n" + "\n".join(f"• {point}" for point in advice['key_points'])
         )
         
-        # Imprimir no console
+        # Print to console
         print(f"\nFINAL RECOMMENDATION: {advice['recommendation']}")
         print(f"Risk Level: {advice['risk_level']}")
         print(f"Time Horizon: {advice['time_horizon']}")
@@ -427,36 +414,36 @@ class BitcoinAnalysisAgent:
         for point in advice['key_points']:
             print(f"  • {point}")
         
-        if advice['recommendation'] in ['Consider Buying', 'Consider Accumulating', 'Buy Dips']:
-            print(f"\nACTION: Could be a good entry point")
+        if advice['recommendation'] in ['Consider Buying', 'Consider Accumulating', 'Hold/Buy Dips']:
+            print(f"\nACTION: Potential buying opportunity")
             print("   Consider dollar-cost averaging strategy")
         elif advice['recommendation'] in ['Consider Selling', 'Consider Taking Profits']:
             print(f"\nACTION: Consider profit-taking")
-            print("   Set stop-loss orders if holding")
+            print("   Set stop-loss orders if maintaining position")
         else:
             print(f"\nACTION: Maintain current position")
-            print("   Monitor key levels for changes")
+            print("   Monitor market conditions for changes")
         
         print("="*60)
         
         return advice
 
     def visualize(self, save_path='bitcoin_analysis.png'):
-        """Cria visualização das aproximações"""
-        print(f"\nGenerating visualization...")
+        """Create visualization of approximations"""
+        print(f"Generating visualization...")
 
         if self.prices is None or not hasattr(self, 'results'):
             print("Run fetch_bitcoin_data() and find_approximations() first.")
             return
 
-        # Criar figura
+        # Create figure
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle('Bitcoin Analysis - Mathematical Approximations', fontsize=16, fontweight='bold')
 
         x = np.arange(len(self.prices))
         dates = self.dates
 
-        # Plot 1: Dados reais + Linear + Polinomial
+        # Plot 1: Real data + Linear + Polynomial
         ax1 = axes[0, 0]
         ax1.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
         
@@ -477,7 +464,7 @@ class BitcoinAnalysisAgent:
         ax1.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
-        # Plot 2: Polinomial + Senoidal
+        # Plot 2: Polynomial + Sinusoidal
         ax2 = axes[0, 1]
         ax2.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
         
@@ -494,7 +481,7 @@ class BitcoinAnalysisAgent:
         ax2.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
-        # Plot 3: Exponencial
+        # Plot 3: Exponential
         ax3 = axes[1, 0]
         ax3.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
         
@@ -511,7 +498,7 @@ class BitcoinAnalysisAgent:
         ax3.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
-        # Plot 4: Média Móvel
+        # Plot 4: Moving Average
         ax4 = axes[1, 1]
         ax4.plot(dates, self.prices, 'b-', alpha=0.3, label='Real Price', linewidth=1)
         
@@ -537,7 +524,7 @@ class BitcoinAnalysisAgent:
         return save_path
 
     def generate_report(self):
-        """Gera relatório completo da análise"""
+        """Generate complete analysis report"""
         print("\n" + "="*60)
         print("FINAL REPORT - BITCOIN ANALYSIS")
         print("="*60)
@@ -560,7 +547,7 @@ class BitcoinAnalysisAgent:
         else:
             print("No regression models available")
 
-        print("\nINSIGHTS:")
+        print("\nKEY INSIGHTS:")
         if 'linear' in self.results:
             slope = self.results['linear']['params']['slope']
             if slope > 0:
@@ -571,7 +558,7 @@ class BitcoinAnalysisAgent:
         if 'volatility' in self.results:
             vol = self.results['volatility']['daily_volatility']
             if vol > 5:
-                print(f"High volatility ({vol:.2f}% daily) - Risky asset")
+                print(f"High volatility ({vol:.2f}% daily) - High risk asset")
             elif vol > 2:
                 print(f"Moderate volatility ({vol:.2f}% daily)")
             else:
@@ -580,29 +567,28 @@ class BitcoinAnalysisAgent:
         print("\n" + "="*60)
 
 def main():
-    """Função principal - executa o agente"""
-    print("Starting Bitcoin Analysis Agent\n")
+    """Main function - execute the agent"""
+    print("Starting Bitcoin Analysis Agent")
 
-    # Criar agente
+    # Create agent
     agent = BitcoinAnalysisAgent()
 
-    # Buscar dados
+    # Fetch data
     data = agent.fetch_bitcoin_data(days=180)
     if data is None:
-        print("\nUsing simulated data for demonstration.")
-        # Aqui você pode adicionar dados simulados se necessário
+        print("Using simulated data for demonstration.")
         return
 
-    # Encontrar aproximações
+    # Find approximations
     agent.find_approximations()
 
-    # Gerar conselhos de investimento
+    # Generate investment advice
     agent.investment_advice()
 
-    # Relatório final
+    # Final report
     agent.generate_report()
 
-    print("\nAnalysis complete!")
+    print("Analysis complete!")
 
 
 if __name__ == "__main__":
