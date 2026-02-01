@@ -28,8 +28,8 @@ with st.sidebar:
     
     modelos = st.multiselect(
         "Models for analysis",
-        ["Linear", "Polynomial", "Polynomial+Sine", "Exponential", "Moving Average"],
-        default=["Linear", "Polynomial", "Exponential"]
+        ["Linear", "Polynomial", "Polynomial+Sine", "Exponential", "Moving Average", "Stochastic Oscillator"],
+        default=["Linear", "Polynomial", "Exponential", "Stochastic Oscillator"]
     )
     
     atualizar = st.button("Update Analysis", type="primary")
@@ -41,6 +41,7 @@ with st.sidebar:
     - CoinGecko API data
     - Mathematical regression
     - Trend analysis
+    - Stochastic Oscillator
     - Cycle detection
     """)
 
@@ -104,87 +105,269 @@ with main_container:
             else:
                 st.metric("Stochastic %K", "N/A")
         
-        st.subheader("Graphical Analysis")
-        
-        fig = go.Figure()
-        
-        fig.add_trace(go.Scatter(
-            x=data['date'],
-            y=data['price'],
-            mode='lines',
-            name='Real Price',
-            line=dict(color='blue', width=1),
-            opacity=0.7
-        ))
-        
-        colors = ['red', 'green', 'purple', 'orange', 'cyan']
-        color_idx = 0
-        
-        if 'Linear' in modelos and 'linear' in results:
-            pred = results['linear']['prediction'](np.arange(len(data)))
-            fig.add_trace(go.Scatter(
+        # Gráfico 1: Preço vs Modelos
+        if any(model in modelos for model in ["Linear", "Polynomial", "Polynomial+Sine", "Exponential", "Moving Average"]):
+            st.subheader("Price Analysis")
+            
+            fig1 = go.Figure()
+            
+            # Preço real
+            fig1.add_trace(go.Scatter(
                 x=data['date'],
-                y=pred,
+                y=data['price'],
                 mode='lines',
-                name=f'Linear (R²={results["linear"]["r_squared"]:.3f})',
-                line=dict(color=colors[color_idx], dash='dash')
+                name='Bitcoin Price',
+                line=dict(color='blue', width=2),
+                opacity=0.7
             ))
-            color_idx += 1
+            
+            colors = ['red', 'green', 'purple', 'orange', 'cyan']
+            color_idx = 0
+            
+            if 'Linear' in modelos and 'linear' in results:
+                pred = results['linear']['prediction'](np.arange(len(data)))
+                fig1.add_trace(go.Scatter(
+                    x=data['date'],
+                    y=pred,
+                    mode='lines',
+                    name=f'Linear (R²={results["linear"]["r_squared"]:.3f})',
+                    line=dict(color=colors[color_idx], dash='dash', width=2)
+                ))
+                color_idx += 1
+            
+            if 'Polynomial' in modelos and 'polynomial' in results:
+                pred = results['polynomial']['prediction'](np.arange(len(data)))
+                fig1.add_trace(go.Scatter(
+                    x=data['date'],
+                    y=pred,
+                    mode='lines',
+                    name=f'Polynomial (R²={results["polynomial"]["r_squared"]:.3f})',
+                    line=dict(color=colors[color_idx], dash='dot', width=2)
+                ))
+                color_idx += 1
+            
+            if 'Exponential' in modelos and 'exponential' in results:
+                pred = results['exponential']['prediction'](np.arange(len(data)))
+                fig1.add_trace(go.Scatter(
+                    x=data['date'],
+                    y=pred,
+                    mode='lines',
+                    name=f'Exponential (R²={results["exponential"]["r_squared"]:.3f})',
+                    line=dict(color=colors[color_idx], dash='dashdot', width=2)
+                ))
+                color_idx += 1
+            
+            if 'Polynomial+Sine' in modelos and 'poly_sine' in results:
+                pred = results['poly_sine']['prediction'](np.arange(len(data)))
+                fig1.add_trace(go.Scatter(
+                    x=data['date'],
+                    y=pred,
+                    mode='lines',
+                    name=f'Poly+Sine (R²={results["poly_sine"]["r2"]:.3f})',
+                    line=dict(color=colors[color_idx], dash='longdash', width=2)
+                ))
+                color_idx += 1
+            
+            if 'Moving Average' in modelos and 'moving_average' in results:
+                ma_values = results['moving_average']['values']
+                window = results['moving_average']['window']
+                fig1.add_trace(go.Scatter(
+                    x=data['date'],
+                    y=ma_values,
+                    mode='lines',
+                    name=f'MA({window} days)',
+                    line=dict(color=colors[color_idx], width=2)
+                ))
+            
+            fig1.update_layout(
+                title="Bitcoin: Price vs Approximation Models",
+                xaxis_title="Date",
+                yaxis_title="Price (USD)",
+                hovermode='x unified',
+                template='plotly_white',
+                height=500
+            )
+            
+            st.plotly_chart(fig1, use_container_width=True)
         
-        if 'Polynomial' in modelos and 'polynomial' in results:
-            pred = results['polynomial']['prediction'](np.arange(len(data)))
-            fig.add_trace(go.Scatter(
-                x=data['date'],
-                y=pred,
-                mode='lines',
-                name=f'Polynomial (R²={results["polynomial"]["r_squared"]:.3f})',
-                line=dict(color=colors[color_idx], dash='dot')
-            ))
-            color_idx += 1
-        
-        if 'Exponential' in modelos and 'exponential' in results:
-            pred = results['exponential']['prediction'](np.arange(len(data)))
-            fig.add_trace(go.Scatter(
-                x=data['date'],
-                y=pred,
-                mode='lines',
-                name=f'Exponential (R²={results["exponential"]["r_squared"]:.3f})',
-                line=dict(color=colors[color_idx], dash='dashdot')
-            ))
-            color_idx += 1
-        
-        if 'Polynomial+Sine' in modelos and 'poly_sine' in results:
-            pred = results['poly_sine']['prediction'](np.arange(len(data)))
-            fig.add_trace(go.Scatter(
-                x=data['date'],
-                y=pred,
-                mode='lines',
-                name=f'Poly+Sine (R²={results["poly_sine"]["r2"]:.3f})',
-                line=dict(color=colors[color_idx], dash='longdash')
-            ))
-            color_idx += 1
-        
-        if 'Moving Average' in modelos and 'moving_average' in results:
-            ma_values = results['moving_average']['values']
-            window = results['moving_average']['window']
-            fig.add_trace(go.Scatter(
-                x=data['date'],
-                y=ma_values,
-                mode='lines',
-                name=f'MA({window} days)',
-                line=dict(color=colors[color_idx], width=2)
-            ))
-        
-        fig.update_layout(
-            title="Bitcoin: Price vs Approximation Models",
-            xaxis_title="Date",
-            yaxis_title="Price (USD)",
-            hovermode='x unified',
-            template='plotly_white',
-            height=500
-        )
-        
-        st.plotly_chart(fig, use_container_width=True)
+        # Gráfico 2: Oscilador Estocástico
+        if 'Stochastic Oscillator' in modelos and 'stochastic' in results:
+            st.subheader("Stochastic Oscillator Analysis")
+            
+            stoch = results['stochastic']
+            stoch_dates = stoch.get('dates', [])
+            stoch_k = stoch.get('k', [])
+            stoch_d = stoch.get('d', [])
+            
+            if stoch_dates and stoch_k and stoch_d:
+                fig2 = go.Figure()
+                
+                # %K line (blue)
+                fig2.add_trace(go.Scatter(
+                    x=stoch_dates,
+                    y=stoch_k,
+                    mode='lines',
+                    name='%K (Fast)',
+                    line=dict(color='blue', width=2)
+                ))
+                
+                # %D line (red)
+                fig2.add_trace(go.Scatter(
+                    x=stoch_dates,
+                    y=stoch_d,
+                    mode='lines',
+                    name='%D (Slow)',
+                    line=dict(color='red', width=2)
+                ))
+                
+                # Overbought/Oversold zones
+                fig2.add_hrect(y0=80, y1=100, 
+                             fillcolor="rgba(255,0,0,0.1)", 
+                             line_width=0, 
+                             annotation_text="Overbought Zone",
+                             annotation_position="top left")
+                
+                fig2.add_hrect(y0=0, y1=20, 
+                             fillcolor="rgba(0,255,0,0.1)", 
+                             line_width=0,
+                             annotation_text="Oversold Zone",
+                             annotation_position="bottom left")
+                
+                # Overbought line
+                fig2.add_hline(y=80, line_dash="dash", 
+                             line_color="gray", 
+                             annotation_text="80 - Overbought",
+                             annotation_position="top right")
+                
+                # Oversold line
+                fig2.add_hline(y=20, line_dash="dash", 
+                             line_color="gray",
+                             annotation_text="20 - Oversold",
+                             annotation_position="bottom right")
+                
+                # Current values markers
+                current_k = stoch.get('current_k', 0)
+                current_d = stoch.get('current_d', 0)
+                last_date = stoch_dates[-1] if stoch_dates else data['date'].iloc[-1]
+                
+                fig2.add_trace(go.Scatter(
+                    x=[last_date],
+                    y=[current_k],
+                    mode='markers',
+                    name=f'Current %K: {current_k:.1f}',
+                    marker=dict(color='blue', size=10, symbol='circle')
+                ))
+                
+                fig2.add_trace(go.Scatter(
+                    x=[last_date],
+                    y=[current_d],
+                    mode='markers',
+                    name=f'Current %D: {current_d:.1f}',
+                    marker=dict(color='red', size=10, symbol='circle')
+                ))
+                
+                # Market condition annotation
+                condition = stoch.get('condition', 'neutral')
+                signal = stoch.get('signal', 'no_crossover')
+                
+                annotations = []
+                
+                if condition == 'overbought':
+                    annotations.append(dict(
+                        x=0.02, y=0.95,
+                        xref="paper", yref="paper",
+                        text="<b>OVERBOUGHT</b>",
+                        showarrow=False,
+                        font=dict(size=14, color="red"),
+                        bgcolor="white",
+                        bordercolor="red",
+                        borderwidth=1,
+                        borderpad=4
+                    ))
+                elif condition == 'oversold':
+                    annotations.append(dict(
+                        x=0.02, y=0.95,
+                        xref="paper", yref="paper",
+                        text="<b>OVERSOLD</b>",
+                        showarrow=False,
+                        font=dict(size=14, color="green"),
+                        bgcolor="white",
+                        bordercolor="green",
+                        borderwidth=1,
+                        borderpad=4
+                    ))
+                
+                if signal == 'bullish_crossover':
+                    annotations.append(dict(
+                        x=0.02, y=0.85,
+                        xref="paper", yref="paper",
+                        text="<b>BULLISH CROSSOVER</b>",
+                        showarrow=False,
+                        font=dict(size=12, color="green"),
+                        bgcolor="white",
+                        bordercolor="green",
+                        borderwidth=1,
+                        borderpad=4
+                    ))
+                elif signal == 'bearish_crossover':
+                    annotations.append(dict(
+                        x=0.02, y=0.85,
+                        xref="paper", yref="paper",
+                        text="<b>BEARISH CROSSOVER</b>",
+                        showarrow=False,
+                        font=dict(size=12, color="red"),
+                        bgcolor="white",
+                        bordercolor="red",
+                        borderwidth=1,
+                        borderpad=4
+                    ))
+                
+                fig2.update_layout(
+                    title=f"Stochastic Oscillator ({stoch.get('period', 14)}-day period)",
+                    xaxis_title="Date",
+                    yaxis_title="Stochastic Value",
+                    yaxis_range=[-5, 105],
+                    hovermode='x unified',
+                    template='plotly_white',
+                    height=500,
+                    annotations=annotations
+                )
+                
+                st.plotly_chart(fig2, use_container_width=True)
+                
+                # Stochastic insights
+                stoch_col1, stoch_col2, stoch_col3 = st.columns(3)
+                
+                with stoch_col1:
+                    st.info("**Current Values**")
+                    st.metric("%K (Fast)", f"{current_k:.1f}")
+                    st.metric("%D (Slow)", f"{current_d:.1f}")
+                
+                with stoch_col2:
+                    st.info("**Market Condition**")
+                    if condition == 'overbought':
+                        st.error("**OVERBOUGHT**")
+                        st.write("Consider taking profits")
+                    elif condition == 'oversold':
+                        st.success("**OVERSOLD**")
+                        st.write("Potential buying opportunity")
+                    else:
+                        st.info("**NEUTRAL**")
+                        st.write("Market in normal range")
+                
+                with stoch_col3:
+                    st.info("**Signal Analysis**")
+                    if signal == 'bullish_crossover':
+                        st.success("**BULLISH CROSSOVER**")
+                        st.write("%K crossed above %D")
+                    elif signal == 'bearish_crossover':
+                        st.warning("**BEARISH CROSSOVER**")
+                        st.write("%K crossed below %D")
+                    else:
+                        st.info("**NO CROSSOVER**")
+                        st.write("Wait for clearer signal")
+            else:
+                st.warning("Stochastic oscillator data not available")
         
         st.subheader("Model Results")
         
@@ -215,13 +398,23 @@ with main_container:
             st.info("**Technical Analysis**")
             
             if 'stochastic' in results:
-                k = results['stochastic']['current_k']
-                if k > 80:
+                stoch = results['stochastic']
+                k = stoch['current_k']
+                condition = stoch.get('condition', 'neutral')
+                
+                if condition == 'overbought':
                     st.warning("**Overbought**: Consider taking profits")
-                elif k < 20:
+                elif condition == 'oversold':
                     st.success("**Oversold**: Buying opportunity")
                 else:
                     st.info("**Neutral**: Wait for clearer signals")
+                
+                # Crossover analysis
+                signal = stoch.get('signal', 'no_crossover')
+                if signal == 'bullish_crossover':
+                    st.success("**Bullish Signal**: %K crossed above %D")
+                elif signal == 'bearish_crossover':
+                    st.warning("**Bearish Signal**: %K crossed below %D")
             else:
                 st.info("Stochastic data not available")
         
@@ -241,7 +434,7 @@ with main_container:
         
         st.subheader("Investment Advice")
         
-        # Seção de conselhos - CORRIGIDA
+        # Botão para gerar conselho
         if st.button("Generate Investment Advice", type="secondary"):
             try:
                 # O agente já tem os dados e resultados
@@ -319,9 +512,10 @@ with main_container:
         This application will:
         1. Fetch Bitcoin price data from CoinGecko API
         2. Apply mathematical models to find patterns
-        3. Generate insights and predictions
-        4. Provide investment advice
-        5. Provide downloadable results
+        3. Analyze Stochastic Oscillator
+        4. Generate insights and predictions
+        5. Provide investment advice
+        6. Provide downloadable results
         """)
 
 # Rodapé
