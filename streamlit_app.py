@@ -64,6 +64,7 @@ with main_container:
                 with st.spinner("Analyzing patterns..."):
                     results = agent.find_approximations()
                     st.session_state.results = results
+                    st.session_state.analysis_complete = True
     
     if 'data' in st.session_state:
         data = st.session_state.data
@@ -238,61 +239,66 @@ with main_container:
             else:
                 st.info("Volatility data not available")
         
-        st.subheader("💡 Investment Advice")
+        st.subheader("Investment Advice")
         
-        # Botão para gerar conselho
-        if st.button("Generate Investment Advice", type="secondary"):
-            with st.spinner("Analyzing market conditions..."):
-                advice = agent.investment_advice()
-                
-                if advice:
-                    # Mostrar recomendação principal
-                    col_rec1, col_rec2, col_rec3 = st.columns(3)
+        # Botão para gerar conselho - CORRIGIDO
+        if st.button("Generate Investment Advice", type="secondary", key="advice_button"):
+            if 'analysis_complete' in st.session_state and st.session_state.analysis_complete:
+                with st.spinner("Analyzing market conditions..."):
+                    # Usar o agente com dados
+                    advice_agent = st.session_state.agent
+                    advice = advice_agent.investment_advice()
                     
-                    with col_rec1:
-                        st.metric(
-                            "Recommendation",
-                            advice['recommendation'],
-                            help="Suggested action based on analysis"
-                        )
-                    
-                    with col_rec2:
-                        risk_color = {
-                            'Very High': 'red',
-                            'High': 'orange',
-                            'Medium': 'yellow',
-                            'Low': 'green'
-                        }.get(advice['risk_level'], 'gray')
+                    if advice:
+                        # Mostrar recomendação principal
+                        col_rec1, col_rec2, col_rec3 = st.columns(3)
                         
-                        st.markdown(f"""
-                        <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
-                        <strong>Risk Level:</strong> {advice['risk_level']}<br>
-                        <strong>Confidence:</strong> {int(advice['confidence']*100)}%
-                        </div>
-                        """, unsafe_allow_html=True)
-                    
-                    with col_rec3:
-                        st.metric(
-                            "Time Horizon",
-                            advice['time_horizon'],
-                            help="Suggested investment timeframe"
-                        )
-                    
-                    # Explicação detalhada
-                    with st.expander("📋 Detailed Analysis", expanded=True):
-                        st.write("**Key Factors Considered:**")
-                        for point in advice['key_points']:
-                            st.write(f"• {point}")
+                        with col_rec1:
+                            st.metric(
+                                "Recommendation",
+                                advice['recommendation'],
+                                help="Suggested action based on analysis"
+                            )
                         
-                        st.write("\n**Final Assessment:**")
-                        st.info(advice['summary'])
+                        with col_rec2:
+                            risk_color = {
+                                'Very High': 'red',
+                                'High': 'orange',
+                                'Medium': 'yellow',
+                                'Low': 'green'
+                            }.get(advice['risk_level'], 'gray')
+                            
+                            st.markdown(f"""
+                            <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
+                            <strong>Risk Level:</strong> {advice['risk_level']}<br>
+                            <strong>Confidence:</strong> {int(advice['confidence']*100)}%
+                            </div>
+                            """, unsafe_allow_html=True)
                         
-                        # Adicionar disclaimer
-                        st.warning("""
-                        **Disclaimer:** This is automated analysis, not financial advice. 
-                        Cryptocurrency investments are high risk. Always do your own research 
-                        and consider consulting with a financial advisor.
-                        """)
+                        with col_rec3:
+                            st.metric(
+                                "Time Horizon",
+                                advice['time_horizon'],
+                                help="Suggested investment timeframe"
+                            )
+                        
+                        # Explicação detalhada
+                        with st.expander("Detailed Analysis", expanded=True):
+                            st.write("**Key Factors Considered:**")
+                            for point in advice['key_points']:
+                                st.write(f"• {point}")
+                            
+                            st.write("\n**Final Assessment:**")
+                            st.info(advice['summary'])
+                            
+                            # Adicionar disclaimer
+                            st.warning("""
+                            **Disclaimer:** This is automated analysis, not financial advice. 
+                            Cryptocurrency investments are high risk. Always do your own research 
+                            and consider consulting with a financial advisor.
+                            """)
+            else:
+                st.error("Please run the analysis first by clicking 'Update Analysis'")
         
         st.download_button(
             label="Export Data (CSV)",
@@ -311,7 +317,7 @@ with main_container:
         4. Provide downloadable results
         """)
 
-# === RODAPÉ SIMPLIFICADO ===
+# Rodapé
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center;'>"
