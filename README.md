@@ -1,11 +1,11 @@
-#Agente de Análise do Bitcoin
+#Bitcoin Analysis Agent
 
-## O que este agente faz?
+## What does this agent do?
 
-Este agente de IA busca automaticamente dados históricos do Bitcoin e encontra funções matemáticas que aproximam a flutuação da moeda. Ele analisa:
+This AI agent automatically searches historical Bitcoin data and finds mathematical functions that approximate the currency's fluctuation. It analyzes:
 
-1. **Tendência Linear** - crescimento/queda constante
-2. **Tendência Polinomial** - aceleração/desaceleração
-3. **Crescimento Exponencial** - crescimento composto
-4. **Média Móvel** - suavização de ruído
-5. **Volatilidade** - risco e variação
+1. **Linear Trend** - constant growth/decline
+2. **Polynomial Trend** - acceleration/deceleration
+3. **Exponential Growth** - compound growth
+4. **Moving Average** - noise smoothing
+5. **Volatility** - risk and variation
