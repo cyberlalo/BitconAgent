@@ -44,11 +44,11 @@ with st.sidebar:
     - Cycle detection
     """)
 
-@st.cache_resource
-def get_agent():
-    return BitcoinAnalysisAgent()
+# Inicializar agente
+if 'agent' not in st.session_state:
+    st.session_state.agent = BitcoinAnalysisAgent()
 
-agent = get_agent()
+agent = st.session_state.agent
 
 main_container = st.container()
 
@@ -59,15 +59,16 @@ with main_container:
             
             if data is not None:
                 st.session_state.data = data
-                st.session_state.agent = agent
                 
                 with st.spinner("Analyzing patterns..."):
                     results = agent.find_approximations()
                     st.session_state.results = results
-                    st.session_state.analysis_complete = True
+                    st.session_state.analysis_done = True
+                    st.success("Analysis completed successfully!")
     
-    if 'data' in st.session_state:
+    if 'data' in st.session_state and st.session_state.get('analysis_done', False):
         data = st.session_state.data
+        results = st.session_state.results
         
         col1, col2, col3, col4 = st.columns(4)
         
@@ -82,22 +83,22 @@ with main_container:
             )
         
         with col2:
-            if 'volatility' in st.session_state.get('results', {}):
-                vol = st.session_state.results['volatility']['daily_volatility']
+            if 'volatility' in results:
+                vol = results['volatility']['daily_volatility']
                 st.metric("Daily Volatility", f"{vol:.2f}%")
             else:
                 st.metric("Daily Volatility", "N/A")
         
         with col3:
-            if 'linear' in st.session_state.get('results', {}):
-                slope = st.session_state.results['linear']['params']['slope']
+            if 'linear' in results:
+                slope = results['linear']['params']['slope']
                 st.metric("Daily Trend", f"${slope:.2f}")
             else:
                 st.metric("Daily Trend", "N/A")
         
         with col4:
-            if 'stochastic' in st.session_state.get('results', {}):
-                k = st.session_state.results['stochastic']['current_k']
+            if 'stochastic' in results:
+                k = results['stochastic']['current_k']
                 status = "Oversold" if k < 20 else "Overbought" if k > 80 else "Neutral"
                 st.metric("Stochastic %K", f"{k:.1f} ({status})")
             else:
@@ -119,53 +120,53 @@ with main_container:
         colors = ['red', 'green', 'purple', 'orange', 'cyan']
         color_idx = 0
         
-        if 'Linear' in modelos and 'linear' in st.session_state.get('results', {}):
-            pred = st.session_state.results['linear']['prediction'](np.arange(len(data)))
+        if 'Linear' in modelos and 'linear' in results:
+            pred = results['linear']['prediction'](np.arange(len(data)))
             fig.add_trace(go.Scatter(
                 x=data['date'],
                 y=pred,
                 mode='lines',
-                name=f'Linear (R²={st.session_state.results["linear"]["r_squared"]:.3f})',
+                name=f'Linear (R²={results["linear"]["r_squared"]:.3f})',
                 line=dict(color=colors[color_idx], dash='dash')
             ))
             color_idx += 1
         
-        if 'Polynomial' in modelos and 'polynomial' in st.session_state.get('results', {}):
-            pred = st.session_state.results['polynomial']['prediction'](np.arange(len(data)))
+        if 'Polynomial' in modelos and 'polynomial' in results:
+            pred = results['polynomial']['prediction'](np.arange(len(data)))
             fig.add_trace(go.Scatter(
                 x=data['date'],
                 y=pred,
                 mode='lines',
-                name=f'Polynomial (R²={st.session_state.results["polynomial"]["r_squared"]:.3f})',
+                name=f'Polynomial (R²={results["polynomial"]["r_squared"]:.3f})',
                 line=dict(color=colors[color_idx], dash='dot')
             ))
             color_idx += 1
         
-        if 'Exponential' in modelos and 'exponential' in st.session_state.get('results', {}):
-            pred = st.session_state.results['exponential']['prediction'](np.arange(len(data)))
+        if 'Exponential' in modelos and 'exponential' in results:
+            pred = results['exponential']['prediction'](np.arange(len(data)))
             fig.add_trace(go.Scatter(
                 x=data['date'],
                 y=pred,
                 mode='lines',
-                name=f'Exponential (R²={st.session_state.results["exponential"]["r_squared"]:.3f})',
+                name=f'Exponential (R²={results["exponential"]["r_squared"]:.3f})',
                 line=dict(color=colors[color_idx], dash='dashdot')
             ))
             color_idx += 1
         
-        if 'Polynomial+Sine' in modelos and 'poly_sine' in st.session_state.get('results', {}):
-            pred = st.session_state.results['poly_sine']['prediction'](np.arange(len(data)))
+        if 'Polynomial+Sine' in modelos and 'poly_sine' in results:
+            pred = results['poly_sine']['prediction'](np.arange(len(data)))
             fig.add_trace(go.Scatter(
                 x=data['date'],
                 y=pred,
                 mode='lines',
-                name=f'Poly+Sine (R²={st.session_state.results["poly_sine"]["r2"]:.3f})',
+                name=f'Poly+Sine (R²={results["poly_sine"]["r2"]:.3f})',
                 line=dict(color=colors[color_idx], dash='longdash')
             ))
             color_idx += 1
         
-        if 'Moving Average' in modelos and 'moving_average' in st.session_state.get('results', {}):
-            ma_values = st.session_state.results['moving_average']['values']
-            window = st.session_state.results['moving_average']['window']
+        if 'Moving Average' in modelos and 'moving_average' in results:
+            ma_values = results['moving_average']['values']
+            window = results['moving_average']['window']
             fig.add_trace(go.Scatter(
                 x=data['date'],
                 y=ma_values,
@@ -188,24 +189,23 @@ with main_container:
         st.subheader("Model Results")
         
         resultados_df = []
-        if 'results' in st.session_state:
-            for key, value in st.session_state.results.items():
-                if key in ['linear', 'polynomial', 'exponential', 'poly_sine']:
-                    r2 = value.get('r_squared', value.get('r2', 0))
-                    resultados_df.append({
-                        'Model': key.upper(),
-                        'Function': value.get('function', 'N/A')[:80] + '...' if len(value.get('function', '')) > 80 else value.get('function', 'N/A'),
-                        'R²': f"{r2:.4f}",
-                        'Fit': 'Excellent' if r2 > 0.8 
-                              else 'Good' if r2 > 0.6 
-                              else 'Moderate' if r2 > 0.4 
-                              else 'Low'
-                    })
+        for key, value in results.items():
+            if key in ['linear', 'polynomial', 'exponential', 'poly_sine']:
+                r2 = value.get('r_squared', value.get('r2', 0))
+                resultados_df.append({
+                    'Model': key.upper(),
+                    'Function': value.get('function', 'N/A')[:80] + '...' if len(value.get('function', '')) > 80 else value.get('function', 'N/A'),
+                    'R²': f"{r2:.4f}",
+                    'Fit': 'Excellent' if r2 > 0.8 
+                          else 'Good' if r2 > 0.6 
+                          else 'Moderate' if r2 > 0.4 
+                          else 'Low'
+                })
         
         if resultados_df:
             st.dataframe(pd.DataFrame(resultados_df), use_container_width=True)
         else:
-            st.info("No model results available. Click 'Update Analysis'.")
+            st.info("No model results available.")
         
         st.subheader("Insights and Recommendations")
         
@@ -214,8 +214,8 @@ with main_container:
         with col_ins1:
             st.info("**Technical Analysis**")
             
-            if 'stochastic' in st.session_state.get('results', {}):
-                k = st.session_state.results['stochastic']['current_k']
+            if 'stochastic' in results:
+                k = results['stochastic']['current_k']
                 if k > 80:
                     st.warning("**Overbought**: Consider taking profits")
                 elif k < 20:
@@ -228,8 +228,8 @@ with main_container:
         with col_ins2:
             st.info("**Risk and Volatility**")
             
-            if 'volatility' in st.session_state.get('results', {}):
-                vol = st.session_state.results['volatility']['daily_volatility']
+            if 'volatility' in results:
+                vol = results['volatility']['daily_volatility']
                 if vol > 5:
                     st.error(f"High risk - Volatility: {vol:.1f}% daily")
                 elif vol > 2:
@@ -241,64 +241,66 @@ with main_container:
         
         st.subheader("Investment Advice")
         
-        # Botão para gerar conselho - CORRIGIDO
-        if st.button("Generate Investment Advice", type="secondary", key="advice_button"):
-            if 'analysis_complete' in st.session_state and st.session_state.analysis_complete:
-                with st.spinner("Analyzing market conditions..."):
-                    # Usar o agente com dados
-                    advice_agent = st.session_state.agent
-                    advice = advice_agent.investment_advice()
+        # Seção de conselhos - CORRIGIDA
+        if st.button("Generate Investment Advice", type="secondary"):
+            try:
+                # O agente já tem os dados e resultados
+                advice = agent.investment_advice()
+                
+                if advice:
+                    # Mostrar recomendação principal
+                    col_rec1, col_rec2, col_rec3 = st.columns(3)
                     
-                    if advice:
-                        # Mostrar recomendação principal
-                        col_rec1, col_rec2, col_rec3 = st.columns(3)
+                    with col_rec1:
+                        st.metric(
+                            "Recommendation",
+                            advice['recommendation'],
+                            help="Suggested action based on analysis"
+                        )
+                    
+                    with col_rec2:
+                        risk_color = {
+                            'Very High': 'red',
+                            'High': 'orange',
+                            'Medium': 'yellow',
+                            'Low': 'green'
+                        }.get(advice['risk_level'], 'gray')
                         
-                        with col_rec1:
-                            st.metric(
-                                "Recommendation",
-                                advice['recommendation'],
-                                help="Suggested action based on analysis"
-                            )
+                        st.markdown(f"""
+                        <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
+                        <strong>Risk Level:</strong> {advice['risk_level']}<br>
+                        <strong>Confidence:</strong> {int(advice['confidence']*100)}%
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col_rec3:
+                        st.metric(
+                            "Time Horizon",
+                            advice['time_horizon'],
+                            help="Suggested investment timeframe"
+                        )
+                    
+                    # Explicação detalhada
+                    with st.expander("Detailed Analysis", expanded=True):
+                        st.write("**Key Factors Considered:**")
+                        for point in advice['key_points']:
+                            st.write(f"• {point}")
                         
-                        with col_rec2:
-                            risk_color = {
-                                'Very High': 'red',
-                                'High': 'orange',
-                                'Medium': 'yellow',
-                                'Low': 'green'
-                            }.get(advice['risk_level'], 'gray')
-                            
-                            st.markdown(f"""
-                            <div style='padding: 10px; border-radius: 5px; border: 1px solid {risk_color};'>
-                            <strong>Risk Level:</strong> {advice['risk_level']}<br>
-                            <strong>Confidence:</strong> {int(advice['confidence']*100)}%
-                            </div>
-                            """, unsafe_allow_html=True)
+                        st.write("\n**Final Assessment:**")
+                        st.info(advice['summary'])
                         
-                        with col_rec3:
-                            st.metric(
-                                "Time Horizon",
-                                advice['time_horizon'],
-                                help="Suggested investment timeframe"
-                            )
-                        
-                        # Explicação detalhada
-                        with st.expander("Detailed Analysis", expanded=True):
-                            st.write("**Key Factors Considered:**")
-                            for point in advice['key_points']:
-                                st.write(f"• {point}")
-                            
-                            st.write("\n**Final Assessment:**")
-                            st.info(advice['summary'])
-                            
-                            # Adicionar disclaimer
-                            st.warning("""
-                            **Disclaimer:** This is automated analysis, not financial advice. 
-                            Cryptocurrency investments are high risk. Always do your own research 
-                            and consider consulting with a financial advisor.
-                            """)
-            else:
-                st.error("Please run the analysis first by clicking 'Update Analysis'")
+                        # Adicionar disclaimer
+                        st.warning("""
+                        **Disclaimer:** This is automated analysis, not financial advice. 
+                        Cryptocurrency investments are high risk. Always do your own research 
+                        and consider consulting with a financial advisor.
+                        """)
+                else:
+                    st.error("Could not generate investment advice. Please run analysis again.")
+                    
+            except Exception as e:
+                st.error(f"Error generating investment advice: {str(e)}")
+                st.info("Make sure you have run the analysis first by clicking 'Update Analysis'")
         
         st.download_button(
             label="Export Data (CSV)",
@@ -307,6 +309,10 @@ with main_container:
             mime="text/csv"
         )
         
+    elif 'data' in st.session_state:
+        st.warning("Analysis not completed. Please click 'Update Analysis' again.")
+        st.session_state.analysis_done = False
+        
     else:
         st.info("Click 'Update Analysis' button to start the analysis")
         st.markdown("""
@@ -314,7 +320,8 @@ with main_container:
         1. Fetch Bitcoin price data from CoinGecko API
         2. Apply mathematical models to find patterns
         3. Generate insights and predictions
-        4. Provide downloadable results
+        4. Provide investment advice
+        5. Provide downloadable results
         """)
 
 # Rodapé
