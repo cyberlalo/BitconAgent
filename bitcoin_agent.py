@@ -254,12 +254,18 @@ class BitcoinAnalysisAgent:
                 d = np.mean(stoch_k[i-2:i+1])
                 stoch_d.append(d)
 
+        # Datas correspondentes aos valores do oscilador
+        stoch_dates = self.dates[period-1:] if len(self.dates) > period else self.dates
+
         results['stochastic'] = {
-            'k': stoch_k,
-            'd': stoch_d,
+            'k': stoch_k,  # %K values
+            'd': stoch_d,  # %D values (signal line)
             'period': period,
             'current_k': stoch_k[-1] if stoch_k else 0,
-            'current_d': stoch_d[-1] if stoch_d else 0
+            'current_d': stoch_d[-1] if stoch_d else 0,
+            'dates': stoch_dates,  # Datas correspondentes
+            'k_values': stoch_k,  # Alias para compatibilidade
+            'd_values': stoch_d   # Alias para compatibilidade
         }
 
         current_k = stoch_k[-1] if stoch_k else 0
@@ -268,13 +274,27 @@ class BitcoinAnalysisAgent:
         print(f"Analysis period: {period} days")
         print(f"Current %K value: {current_k:.2f}")
         print(f"Current %D value: {current_d:.2f}")
+        
+        # Análise de crossover
+        if len(stoch_k) > 1 and len(stoch_d) > 1:
+            if stoch_k[-1] > stoch_d[-1] and stoch_k[-2] <= stoch_d[-2]:
+                print(f"Signal: BULLISH CROSSOVER (%K crossed above %D)")
+                results['stochastic']['signal'] = 'bullish_crossover'
+            elif stoch_k[-1] < stoch_d[-1] and stoch_k[-2] >= stoch_d[-2]:
+                print(f"Signal: BEARISH CROSSOVER (%K crossed below %D)")
+                results['stochastic']['signal'] = 'bearish_crossover'
+            else:
+                results['stochastic']['signal'] = 'no_crossover'
 
         if current_k > 80:
             print(f"Market condition: OVERBOUGHT (K > 80)")
+            results['stochastic']['condition'] = 'overbought'
         elif current_k < 20:
             print(f"Market condition: OVERSOLD (K < 20)")
+            results['stochastic']['condition'] = 'oversold'
         else:
             print(f"Market condition: NEUTRAL (20 < K < 80)")
+            results['stochastic']['condition'] = 'neutral'
 
         self.results = results
         return results
@@ -429,91 +449,129 @@ class BitcoinAnalysisAgent:
         return advice
 
     def visualize(self, save_path='bitcoin_analysis.png'):
-        """Create visualization of approximations"""
+        """Create visualization of approximations with Stochastic Oscillator"""
         print(f"Generating visualization...")
 
         if self.prices is None or not hasattr(self, 'results'):
             print("Run fetch_bitcoin_data() and find_approximations() first.")
             return
 
-        # Create figure
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle('Bitcoin Analysis - Mathematical Approximations', fontsize=16, fontweight='bold')
+        # Create figure with 3 subplots (2 for price, 1 for stochastic)
+        fig, axes = plt.subplots(3, 1, figsize=(15, 12))
+        fig.suptitle('Bitcoin Analysis - Mathematical Approximations & Stochastic Oscillator', 
+                    fontsize=16, fontweight='bold')
 
         x = np.arange(len(self.prices))
         dates = self.dates
 
-        # Plot 1: Real data + Linear + Polynomial
-        ax1 = axes[0, 0]
-        ax1.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        # Plot 1: Price with models
+        ax1 = axes[0]
+        ax1.plot(dates, self.prices, 'b-', alpha=0.5, label='Bitcoin Price', linewidth=2)
         
         if 'linear' in self.results:
             y_linear = self.results['linear']['prediction'](x)
-            ax1.plot(dates, y_linear, 'r--', label='Linear', linewidth=2)
+            ax1.plot(dates, y_linear, 'r--', label='Linear Trend', linewidth=2)
         
         if 'polynomial' in self.results:
             y_poly = self.results['polynomial']['prediction'](x)
-            ax1.plot(dates, y_poly, 'g--', label='Polynomial', linewidth=2)
+            ax1.plot(dates, y_poly, 'g--', label='Polynomial Trend', linewidth=2)
         
-        ax1.set_title('Linear vs Polynomial Trend')
+        ax1.set_title('Bitcoin Price with Trend Models')
         ax1.set_xlabel('Date')
         ax1.set_ylabel('Price (USD)')
-        ax1.legend(fontsize=8)
+        ax1.legend(fontsize=9, loc='upper left')
         ax1.grid(True, alpha=0.3)
         ax1.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
         ax1.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax1.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
-        # Plot 2: Polynomial + Sinusoidal
-        ax2 = axes[0, 1]
-        ax2.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        # Plot 2: Other models
+        ax2 = axes[1]
+        ax2.plot(dates, self.prices, 'b-', alpha=0.3, label='Bitcoin Price', linewidth=1)
         
         if 'poly_sine' in self.results:
             y_poly_sine = self.results['poly_sine']['prediction'](x)
             ax2.plot(dates, y_poly_sine, 'purple', linestyle='--', label='Polynomial+Sine', linewidth=2)
         
-        ax2.set_title('Polynomial + Seasonal Cycles')
+        if 'exponential' in self.results:
+            y_exp = self.results['exponential']['prediction'](x)
+            ax2.plot(dates, y_exp, 'orange', linestyle='--', label='Exponential', linewidth=2)
+        
+        if 'moving_average' in self.results:
+            ma_values = self.results['moving_average']['values']
+            ax2.plot(dates, ma_values, 'cyan', linestyle='-', label='Moving Average', linewidth=2)
+        
+        ax2.set_title('Advanced Models & Moving Average')
         ax2.set_xlabel('Date')
         ax2.set_ylabel('Price (USD)')
-        ax2.legend(fontsize=8)
+        ax2.legend(fontsize=9, loc='upper left')
         ax2.grid(True, alpha=0.3)
         ax2.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
         ax2.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax2.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
-        # Plot 3: Exponential
-        ax3 = axes[1, 0]
-        ax3.plot(dates, self.prices, 'b-', alpha=0.5, label='Real Price', linewidth=1)
+        # Plot 3: Stochastic Oscillator
+        ax3 = axes[2]
         
-        if 'exponential' in self.results:
-            y_exp = self.results['exponential']['prediction'](x)
-            ax3.plot(dates, y_exp, 'm--', label='Exponential', linewidth=2)
+        if 'stochastic' in self.results:
+            stochastic = self.results['stochastic']
+            stoch_dates = stochastic.get('dates', dates[len(dates)-len(stochastic['k']):])
+            stoch_k = stochastic['k']
+            stoch_d = stochastic['d']
+            
+            # Plot %K and %D lines
+            ax3.plot(stoch_dates, stoch_k, 'b-', label='%K (Fast)', linewidth=2)
+            ax3.plot(stoch_dates, stoch_d, 'r-', label='%D (Slow)', linewidth=2)
+            
+            # Add overbought/oversold lines
+            ax3.axhline(y=80, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+            ax3.axhline(y=20, color='gray', linestyle='--', alpha=0.7, linewidth=1)
+            
+            # Fill overbought and oversold areas
+            ax3.fill_between(stoch_dates, 80, 100, alpha=0.1, color='red', label='Overbought Zone')
+            ax3.fill_between(stoch_dates, 0, 20, alpha=0.1, color='green', label='Oversold Zone')
+            
+            # Add current value markers
+            current_k = stochastic['current_k']
+            current_d = stochastic['current_d']
+            
+            # Find the last date for the marker
+            last_date = stoch_dates[-1] if len(stoch_dates) > 0 else dates[-1]
+            
+            # Add markers for current values
+            ax3.plot(last_date, current_k, 'bo', markersize=8, label=f'Current %K: {current_k:.1f}')
+            ax3.plot(last_date, current_d, 'ro', markersize=8, label=f'Current %D: {current_d:.1f}')
+            
+            # Add crossover markers if any
+            condition = stochastic.get('condition', 'neutral')
+            if condition == 'overbought':
+                ax3.text(0.02, 0.95, 'OVERBOUGHT', transform=ax3.transAxes, 
+                        fontsize=12, fontweight='bold', color='red',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            elif condition == 'oversold':
+                ax3.text(0.02, 0.95, 'OVERSOLD', transform=ax3.transAxes, 
+                        fontsize=12, fontweight='bold', color='green',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            
+            signal = stochastic.get('signal', 'no_crossover')
+            if signal == 'bullish_crossover':
+                ax3.text(0.02, 0.85, 'BULLISH CROSSOVER', transform=ax3.transAxes, 
+                        fontsize=10, fontweight='bold', color='green',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            elif signal == 'bearish_crossover':
+                ax3.text(0.02, 0.85, 'BEARISH CROSSOVER', transform=ax3.transAxes, 
+                        fontsize=10, fontweight='bold', color='red',
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
-        ax3.set_title('Exponential Growth')
+        ax3.set_title('Stochastic Oscillator (14-day period)')
         ax3.set_xlabel('Date')
-        ax3.set_ylabel('Price (USD)')
-        ax3.legend(fontsize=8)
+        ax3.set_ylabel('Stochastic Value')
+        ax3.set_ylim(-5, 105)
+        ax3.legend(fontsize=9, loc='upper right')
         ax3.grid(True, alpha=0.3)
         ax3.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
         ax3.xaxis.set_major_locator(mdates.AutoDateLocator())
         plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
-
-        # Plot 4: Moving Average
-        ax4 = axes[1, 1]
-        ax4.plot(dates, self.prices, 'b-', alpha=0.3, label='Real Price', linewidth=1)
-        
-        if 'moving_average' in self.results:
-            ma_values = self.results['moving_average']['values']
-            ax4.plot(dates, ma_values, 'orange', label='Moving Average', linewidth=2)
-        
-        ax4.set_title('Moving Average Trend')
-        ax4.set_xlabel('Date')
-        ax4.set_ylabel('Price (USD)')
-        ax4.legend(fontsize=8)
-        ax4.grid(True, alpha=0.3)
-        ax4.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
-        ax4.xaxis.set_major_locator(mdates.AutoDateLocator())
-        plt.setp(ax4.xaxis.get_majorticklabels(), rotation=45, ha='right', fontsize=8)
 
         plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -564,6 +622,14 @@ class BitcoinAnalysisAgent:
             else:
                 print(f"Low volatility ({vol:.2f}% daily) - Stable period")
 
+        if 'stochastic' in self.results:
+            stoch = self.results['stochastic']
+            print(f"\nSTOCHASTIC OSCILLATOR:")
+            print(f"Current %K: {stoch['current_k']:.2f}")
+            print(f"Current %D: {stoch['current_d']:.2f}")
+            print(f"Market condition: {stoch.get('condition', 'N/A').upper()}")
+            print(f"Signal: {stoch.get('signal', 'no_crossover').replace('_', ' ').upper()}")
+
         print("\n" + "="*60)
 
 def main():
@@ -584,6 +650,9 @@ def main():
 
     # Generate investment advice
     agent.investment_advice()
+
+    # Generate visualization with stochastic oscillator
+    agent.visualize()
 
     # Final report
     agent.generate_report()
