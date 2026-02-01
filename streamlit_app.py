@@ -254,21 +254,12 @@ with main_container:
         3. Generate insights and predictions
         4. Provide downloadable results
         """)
-        st.markdown("---")
-    
-    footer_col1, footer_col2, footer_col3 = st.columns([1, 2, 1])
-    
-    with footer_col1:
-        st.markdown("**Version:** 1.0.0")
-    
-    with footer_col2:
-        st.markdown(
-            "<div style='text-align: center;'>"
-            "**Bitcoin Agent by Eduardo Araujo © 2026**<br>"
-            "<small>AI-powered Bitcoin analysis and prediction</small>"
-            "</div>",
-            unsafe_allow_html=True
-        )
-    
-    with footer_col3:
-        st.markdown("**Updated:** " + datetime.now().strftime("%Y-%m-%d"))
+
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center;'>"
+        "Bitcoin Agent by Eduardo Araujo © 2026<br>"
+        "<small>AI-powered Bitcoin analysis and prediction</small>"
+        "</div>",
+        unsafe_allow_html=True
+)

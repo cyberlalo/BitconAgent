@@ -1,19 +1,11 @@
-# 🎈 Blank app template
+#Agente de Análise do Bitcoin
 
-A simple Streamlit app template for you to modify!
+## O que este agente faz?
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+Este agente de IA busca automaticamente dados históricos do Bitcoin e encontra funções matemáticas que aproximam a flutuação da moeda. Ele analisa:
 
-### How to run it on your own machine
-
-1. Install the requirements
-
-   ```
-   $ pip install -r requirements.txt
-   ```
-
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+1. **Tendência Linear** - crescimento/queda constante
+2. **Tendência Polinomial** - aceleração/desaceleração
+3. **Crescimento Exponencial** - crescimento composto
+4. **Média Móvel** - suavização de ruído
+5. **Volatilidade** - risco e variação
