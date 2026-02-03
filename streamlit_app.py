@@ -5,20 +5,20 @@ import matplotlib.pyplot as plt
 from bitcoin_agent import BitcoinAnalysisAgent
 
 st.set_page_config(
-    page_title="Bitcoin Quant Agent",
+    page_title="Agente de Análise de Bitcoin",
     layout="wide"
 )
 
-st.title("Bitcoin Quantitative Analysis Agent")
-st.caption("Linear • Polynomial + Sine • Moving Average • Stochastic Oscillator")
+st.title("Agente de Análise Quantitativa de Bitcoin")
+st.caption("Linear • Polinomial + Seno • Média Móvel • Oscilador Estocástico")
 
 # =========================
-# SIDEBAR
+# BARRA LATERAL
 # =========================
 
 st.sidebar.header("Configuração")
 
-days = st.sidebar.slider(
+dias = st.sidebar.slider(
     "Janela histórica (dias)",
     min_value=60,
     max_value=365,
@@ -26,23 +26,23 @@ days = st.sidebar.slider(
     step=30
 )
 
-show_linear = st.sidebar.checkbox("Linear", True)
-show_poly_sine = st.sidebar.checkbox("Polinomial + Seno", True)
-show_ma = st.sidebar.checkbox("Média móvel (30d)", True)
+mostrar_linear = st.sidebar.checkbox("Linear", True)
+mostrar_poli_seno = st.sidebar.checkbox("Polinomial + Seno", True)
+mostrar_ma = st.sidebar.checkbox("Média móvel (30d)", True)
 
 # =========================
 # EXECUÇÃO
 # =========================
 
-agent = BitcoinAnalysisAgent()
+agente = BitcoinAnalysisAgent()
 
 with st.spinner("Coletando dados do CoinGecko..."):
-    agent.fetch_bitcoin_data(days=days)
-    results = agent.find_approximations()
-    advice = agent.investment_advice()
+    agente.fetch_bitcoin_data(days=dias)
+    resultados = agente.find_approximations()
+    recomendacao = agente.investment_advice()
 
-prices = agent.prices
-x = np.arange(len(prices))
+precos = agente.prices
+x = np.arange(len(precos))
 
 # =========================
 # GRÁFICO DE PREÇO
@@ -52,24 +52,24 @@ st.subheader("Preço do Bitcoin + Curvas de Aproximação")
 
 fig, ax = plt.subplots(figsize=(14, 6))
 
-ax.plot(prices, label="Preço BTC", linewidth=2, color="black")
+ax.plot(precos, label="Preço BTC", linewidth=2, color="black")
 
-if show_linear:
+if mostrar_linear:
     ax.plot(
-        results["linear"]["prediction"](x),
+        resultados["linear"]["prediction"](x),
         linestyle="--",
-        label=f"Linear (R²={results['linear']['r2']:.2f})"
+        label=f"Linear (R²={resultados['linear']['r2']:.2f})"
     )
 
-if show_poly_sine:
+if mostrar_poli_seno:
     ax.plot(
-        results["poly_sine"]["prediction"](x),
+        resultados["poly_sine"]["prediction"](x),
         linestyle="--",
-        label=f"Polinomial + Seno (R²={results['poly_sine']['r2']:.2f})"
+        label=f"Polinomial + Seno (R²={resultados['poly_sine']['r2']:.2f})"
     )
 
-if show_ma:
-    ma = results["moving_average"]["values"]
+if mostrar_ma:
+    ma = resultados["moving_average"]["values"]
     ax.plot(ma, label="Média móvel (30d)", linewidth=2)
 
 ax.set_ylabel("USD")
@@ -85,19 +85,19 @@ st.pyplot(fig)
 
 st.subheader("Oscilador Estocástico")
 
-stoch = results["stochastic"]
+estocastico = resultados["stochastic"]
 
 fig2, ax2 = plt.subplots(figsize=(14, 4))
 
-ax2.plot(stoch["k"], label="%K", linewidth=2)
-ax2.plot(stoch["d"], label="%D", linewidth=2)
+ax2.plot(estocastico["k"], label="%K", linewidth=2)
+ax2.plot(estocastico["d"], label="%D", linewidth=2)
 
 ax2.axhline(80, linestyle="--", alpha=0.5)
 ax2.axhline(20, linestyle="--", alpha=0.5)
 
 ax2.set_ylim(0, 100)
-ax2.set_ylabel("Stochastic")
-ax2.set_xlabel("Tempo")
+ax2.set_ylabel("Estocástico")
+ax2.set_xlabel("Dias")
 ax2.legend()
 ax2.grid(alpha=0.3)
 
@@ -111,15 +111,15 @@ st.subheader("Recomendação do Agente")
 
 col1, col2, col3 = st.columns(3)
 
-col1.metric("Stochastic %K", f"{advice['stochastic_k']:.1f}")
-col2.metric("Recomendação", advice["recommendation"])
+col1.metric("Estocástico %K", f"{recomendacao['stochastic_k']:.1f}")
+col2.metric("Recomendação", recomendacao["recommendation"])
 
-best_model = max(
-    ((k, v) for k, v in results.items() if "r2" in v),
+melhor_modelo = max(
+    ((k, v) for k, v in resultados.items() if "r2" in v),
     key=lambda x: x[1]["r2"]
 )
 
-col3.metric("Modelo dominante", best_model[0])
+col3.metric("Modelo dominante", melhor_modelo[0])
 
 # =========================
 # EXPLICAÇÃO
@@ -130,9 +130,9 @@ with st.expander("Como o agente decide"):
 - **Curvas de preço** são usadas para **entender tendência**
 - O **melhor modelo (R²)** indica a forma dominante do mercado
 - O **oscilador estocástico** decide *timing*
-    - %K < 20 → **Accumulate**
-    - %K > 80 → **Sell**
-    - Caso contrário → **Hold**
+    - %K < 20 → **Acumular**
+    - %K > 80 → **Vender**
+    - Caso contrário → **Manter**
 - Nenhum modelo manda sozinho:
     - tendência ≠ ponto de entrada
     - ciclo ≠ direção
@@ -145,9 +145,8 @@ with st.expander("Como o agente decide"):
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center;'>"
-    "Bitcoin Agent by Eduardo Araujo © 2026<br>"
-    "<strong>Bitcoin Autonomous Agent</strong><br>"
-    "<small>Mathematical modeling • Memory • Autonomy</small>"
+    "Agente Bitcoin por Eduardo Araujo © 2026<br>"
+    "<strong>Agente Autônomo Bitcoin</strong><br>"
     "</div>",
     unsafe_allow_html=True
 )
