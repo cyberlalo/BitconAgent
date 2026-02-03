@@ -33,8 +33,8 @@ class BitcoinAnalysisAgent:
             if "prices" not in data or len(data["prices"]) == 0:
                 raise ValueError("Dados vazios retornados da API")
 
-            self.prices = np.array([p[1] for p in data["prices"]])
-            self.dates = [datetime.fromtimestamp(p[0] / 1000) for p in data]
+            self.prices = np.array([float(p[1]) for p in data["prices"]])
+            self.dates = [datetime.fromtimestamp(int(p[0]) / 1000) for p in data["prices"]]
 
             return self.prices
 
