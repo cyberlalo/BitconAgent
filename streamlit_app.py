@@ -96,9 +96,6 @@ c4.metric(
     f"{best_model['r2']:.2f}"
 )
 
-st.subheader("Situação atual do mercado")
-st.metric("Preço atual do Bitcoin", f"${current_price:,.2f}")
-
 st.caption(
     f"O agente estima que, mantendo a estrutura atual do mercado, "
     f"o preço do Bitcoin em {FORECAST_DAYS} dias será "
