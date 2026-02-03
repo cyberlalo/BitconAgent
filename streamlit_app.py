@@ -9,8 +9,8 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Bitcoin Quantitative Analysis Agent")
-st.caption("Linear • Exponential • Polynomial + Sine • Moving Average • Stochastic Oscillator")
+st.title("Bitcoin Quantitative Analysis Agent")
+st.caption("Linear • Polynomial + Sine • Moving Average • Stochastic Oscillator")
 
 # =========================
 # SIDEBAR
@@ -27,7 +27,6 @@ days = st.sidebar.slider(
 )
 
 show_linear = st.sidebar.checkbox("Linear", True)
-show_exponential = st.sidebar.checkbox("Exponencial", True)
 show_poly_sine = st.sidebar.checkbox("Polinomial + Seno", True)
 show_ma = st.sidebar.checkbox("Média móvel (30d)", True)
 
@@ -60,13 +59,6 @@ if show_linear:
         results["linear"]["prediction"](x),
         linestyle="--",
         label=f"Linear (R²={results['linear']['r2']:.2f})"
-    )
-
-if show_exponential:
-    ax.plot(
-        results["exponential"]["prediction"](x),
-        linestyle="--",
-        label=f"Exponencial (R²={results['exponential']['r2']:.2f})"
     )
 
 if show_poly_sine:
@@ -115,7 +107,7 @@ st.pyplot(fig2)
 # RECOMENDAÇÃO
 # =========================
 
-st.subheader("📌 Recomendação do Agente")
+st.subheader("Recomendação do Agente")
 
 col1, col2, col3 = st.columns(3)
 
@@ -133,15 +125,15 @@ col3.metric("Modelo dominante", best_model[0])
 # EXPLICAÇÃO
 # =========================
 
-with st.expander("🧠 Como o agente decide"):
+with st.expander("Como o agente decide"):
     st.markdown("""
 - **Curvas de preço** são usadas para **entender tendência**
-- O **melhor modelo (R²)** é usado para previsão
+- O **melhor modelo (R²)** indica a forma dominante do mercado
 - O **oscilador estocástico** decide *timing*
     - %K < 20 → **Accumulate**
     - %K > 80 → **Sell**
     - Caso contrário → **Hold**
-- Nenhum modelo “manda sozinho”
+- Nenhum modelo manda sozinho:
     - tendência ≠ ponto de entrada
     - ciclo ≠ direção
     """)
@@ -153,7 +145,7 @@ with st.expander("🧠 Como o agente decide"):
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center;'>"
-     "Bitcoin Agent by Eduardo Araujo © 2026<br>"
+    "Bitcoin Agent by Eduardo Araujo © 2026<br>"
     "<strong>Bitcoin Autonomous Agent</strong><br>"
     "<small>Mathematical modeling • Memory • Autonomy</small>"
     "</div>",
