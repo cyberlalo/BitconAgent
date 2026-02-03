@@ -372,9 +372,9 @@ with indicator_tabs[0]:
             title="Oscilador Estocástico",
             xaxis_title="Data",
             yaxis_title="Valor (%)",
-            yaxis=dict(range=[0, 100]),
+            yaxis=dict(range=[0, 150]),
             hovermode='x unified',
-            height=600
+            height=400
         )
         
         st.plotly_chart(fig_stoch, use_container_width=True)
