@@ -65,11 +65,11 @@ def run_agent_once():
     advice = agent.investment_advice()
 
     # 7️⃣ Log claro
-    print(f"Model: {best_model_name}")
-    print(f"Current price: {current_price:,.2f} USD")
-    print(f"Forecast (D+{FORECAST_DAYS}): {forecast_price:,.2f} USD")
-    print(f"Δ Forecast: {variation_pct:+.2f}%")
-    print(f"Advice: {advice['recommendation']} (Stochastic %K = {advice['stochastic_k']:.1f})")
+    print(f"Modelo: {best_model_name}")
+    print(f"Preço atual: {current_price:,.2f} USD")
+    print(f"Previsão (D+{FORECAST_DAYS}): {forecast_price:,.2f} USD")
+    print(f"Δ Variação: {variation_pct:+.2f}%")
+    print(f"Recomendação: {advice['recommendation']} (Estocástico %K = {advice['stochastic_k']:.1f})")
 
     print("=" * 60)
     print("Agent run completed")
