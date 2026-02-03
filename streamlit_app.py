@@ -374,7 +374,7 @@ with indicator_tabs[0]:
             yaxis_title="Valor (%)",
             yaxis=dict(range=[0, 100]),
             hovermode='x unified',
-            height=500
+            height=600
         )
         
         st.plotly_chart(fig_stoch, use_container_width=True)
