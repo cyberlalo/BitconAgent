@@ -113,11 +113,11 @@ class BitcoinAnalysisAgent:
         k = self.results["stochastic"]["current_k"]
 
         if k < 20:
-            rec = "Accumulate"
+            rec = "Acumular"
         elif k > 80:
-            rec = "Sell"
+            rec = "Vender"
         else:
-            rec = "Hold"
+            rec = "Manter"
 
         return {
             "recommendation": rec,
