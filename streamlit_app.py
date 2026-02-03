@@ -55,7 +55,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("₿ Agente de Análise Quantitativa Bitcoin")
+st.title("Agente de Análise Quantitativa de Bitcoin")
 st.caption("Análise Multi-Modelo com Machine Learning • Gestão de Risco • Backtesting")
 
 # Inicializar DB
@@ -374,7 +374,7 @@ with indicator_tabs[0]:
             yaxis_title="Valor (%)",
             yaxis=dict(range=[0, 100]),
             hovermode='x unified',
-            height=400
+            height=500
         )
         
         st.plotly_chart(fig_stoch, use_container_width=True)
