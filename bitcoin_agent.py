@@ -1,180 +1,120 @@
-"""
-Bitcoin Analysis Agent
-Historical data analysis and mathematical approximation functions
-"""
-
 import requests
 import numpy as np
 import pandas as pd
 from datetime import datetime
 from scipy.optimize import curve_fit
 from scipy import stats
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 class BitcoinAnalysisAgent:
-    def __init__(self, verbose=False):
-        self.verbose = verbose
-        self.data = None
+    def __init__(self):
         self.prices = None
         self.dates = None
-        self.results = None
+        self.results = {}
 
-        if self.verbose:
-            print("Bitcoin Analysis Agent initialized")
+    # =========================
+    # DATA
+    # =========================
 
-    # --------------------------------------------------
-    # DATA FETCHING
-    # --------------------------------------------------
-    def fetch_bitcoin_data(self, days=365):
-        if self.verbose:
-            print(f"Fetching data for the last {days} days...")
+    def fetch_bitcoin_data(self, days=180):
+        url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
+        params = {"vs_currency": "usd", "days": days, "interval": "daily"}
+        r = requests.get(url, params=params)
+        r.raise_for_status()
+        data = r.json()["prices"]
 
-        try:
-            url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
-            params = {
-                "vs_currency": "usd",
-                "days": days,
-                "interval": "daily"
-            }
+        self.prices = np.array([p[1] for p in data])
+        self.dates = [datetime.fromtimestamp(p[0]/1000) for p in data]
+        return self.prices
 
-            response = requests.get(url, params=params, timeout=15)
-            response.raise_for_status()
-            data = response.json()
+    # =========================
+    # MODELOS
+    # =========================
 
-            prices = [p[1] for p in data["prices"]]
-            timestamps = [p[0] for p in data["prices"]]
-            dates = [datetime.fromtimestamp(ts / 1000) for ts in timestamps]
-
-            self.data = pd.DataFrame({"date": dates, "price": prices})
-            self.prices = np.array(prices)
-            self.dates = dates
-
-            return self.data
-
-        except Exception as e:
-            if self.verbose:
-                print(f"Error fetching data: {e}")
-            return None
-
-    # --------------------------------------------------
-    # ANALYSIS
-    # --------------------------------------------------
     def find_approximations(self):
-        if self.prices is None:
-            return None
-
         x = np.arange(len(self.prices))
         y = self.prices
         results = {}
 
-        # Linear regression
+        # 1️⃣ Linear
         slope, intercept, r, _, _ = stats.linregress(x, y)
-        linear_func = lambda t: slope * t + intercept
         results["linear"] = {
-            "prediction": linear_func,
-            "r_squared": r**2,
-            "params": {"slope": slope, "intercept": intercept}
+            "prediction": lambda t: slope * t + intercept,
+            "r2": r**2
         }
 
-        # Polynomial (degree 2)
-        coeffs = np.polyfit(x, y, 2)
-        poly = np.poly1d(coeffs)
-        y_pred = poly(x)
-        r2_poly = 1 - np.sum((y - y_pred)**2) / np.sum((y - np.mean(y))**2)
-        results["polynomial"] = {
-            "prediction": poly,
-            "r_squared": r2_poly,
-            "params": {"coefficients": coeffs}
-        }
+        # 2️⃣ Exponencial
+        def exp(x, a, b):
+            return a * np.exp(b * x)
 
-        # Exponential
-        def exp_func(t, a, b):
-            return a * np.exp(b * t)
-
-        y_adj = y - np.min(y) + 1
-        popt, _ = curve_fit(exp_func, x, y_adj, p0=[y_adj[0], 0.001], maxfev=10000)
-        exp_pred = lambda t: exp_func(t, *popt) + np.min(y) - 1
-        y_exp = exp_pred(x)
-        r2_exp = 1 - np.sum((y - y_exp)**2) / np.sum((y - np.mean(y))**2)
-
+        y_shift = y - y.min() + 1
+        popt, _ = curve_fit(exp, x, y_shift, maxfev=10000)
         results["exponential"] = {
-            "prediction": exp_pred,
-            "r_squared": r2_exp,
-            "params": {"a": popt[0], "b": popt[1]}
+            "prediction": lambda t: exp(t, *popt) + y.min() - 1,
+            "r2": 1 - np.sum((y - (exp(x, *popt)+y.min()-1))**2)/np.sum((y-np.mean(y))**2)
         }
 
-        # Volatility
-        returns = np.diff(y) / y[:-1] * 100
-        results["volatility"] = {
-            "daily_volatility": float(np.std(returns)),
-            "annual_volatility": float(np.std(returns) * np.sqrt(365))
+        # 3️⃣ Polinomial + seno
+        period = 45
+        def poly_sine(x, a0, a1, a2, a3, A, phi):
+            poly = a0 + a1*x + a2*x**2 + a3*x**3
+            return poly + A*np.sin(2*np.pi*x/period + phi)
+
+        p0 = [y.mean(), 0, 0, 0, 1000, 0]
+        popt, _ = curve_fit(poly_sine, x, y, p0=p0, maxfev=20000)
+
+        results["poly_sine"] = {
+            "prediction": lambda t: poly_sine(t, *popt),
+            "r2": 1 - np.sum((y - poly_sine(x,*popt))**2)/np.sum((y-np.mean(y))**2)
+        }
+
+        # 4️⃣ Média móvel
+        window = 30
+        ma = pd.Series(y).rolling(window).mean().values
+        results["moving_average"] = {
+            "values": ma,
+            "window": window
+        }
+
+        # =========================
+        # OSCILADOR ESTOCÁSTICO
+        # =========================
+
+        k_values = []
+        period = 14
+
+        for i in range(period, len(y)):
+            low = y[i-period:i].min()
+            high = y[i-period:i].max()
+            k = 100 * (y[i] - low) / (high - low) if high != low else 50
+            k_values.append(k)
+
+        d_values = pd.Series(k_values).rolling(3).mean().values
+
+        results["stochastic"] = {
+            "k": k_values,
+            "d": d_values,
+            "current_k": k_values[-1],
+            "current_d": d_values[-1]
         }
 
         self.results = results
         return results
 
-    # --------------------------------------------------
-    # FORECAST (NOVO — IMPORTANTE)
-    # --------------------------------------------------
-    def forecast(self, days_ahead=7):
-        """
-        Predict future price using the best available model
-        """
-        if self.results is None or self.prices is None:
-            return None
+    # =========================
+    # RECOMENDAÇÃO
+    # =========================
 
-        best_model = None
-        best_r2 = -1
+    def investment_advice(self):
+        k = self.results["stochastic"]["current_k"]
 
-        for name, model in self.results.items():
-            r2 = model.get("r_squared", -1)
-            if r2 > best_r2 and "prediction" in model:
-                best_model = name
-                best_r2 = r2
-
-        if best_model is None:
-            return None
-
-        n = len(self.prices)
-        x_future = np.arange(n, n + days_ahead)
-        prediction_func = self.results[best_model]["prediction"]
-        future_prices = prediction_func(x_future)
+        if k < 20:
+            rec = "Accumulate"
+        elif k > 80:
+            rec = "Sell"
+        else:
+            rec = "Hold"
 
         return {
-            "model": best_model,
-            "predicted_price": float(future_prices[-1]),
-            "confidence": max(min(best_r2, 0.95), 0.3)
+            "recommendation": rec,
+            "stochastic_k": k
         }
-
-    # --------------------------------------------------
-    # INVESTMENT ADVICE (INALTERADO NA LÓGICA)
-    # --------------------------------------------------
-    def investment_advice(self):
-        if self.results is None or self.prices is None:
-            return None
-
-        advice = {
-            "recommendation": "Hold",
-            "risk_level": "Medium",
-            "confidence": 0.5,
-            "key_points": []
-        }
-
-        slope = self.results["linear"]["params"]["slope"]
-        if slope > 50:
-            advice["recommendation"] = "Consider Buying"
-            advice["confidence"] = 0.7
-            advice["key_points"].append(f"Upward trend: +${slope:.2f}/day")
-        elif slope < -50:
-            advice["recommendation"] = "Consider Selling"
-            advice["confidence"] = 0.6
-            advice["key_points"].append(f"Downward trend: ${slope:.2f}/day")
-
-        vol = self.results["volatility"]["daily_volatility"]
-        if vol > 6:
-            advice["risk_level"] = "High"
-        elif vol < 2:
-            advice["risk_level"] = "Low"
-
-        return advice

@@ -1,87 +1,37 @@
-"""
-Autonomous Bitcoin Analysis Agent
-Runs periodically, fetches data, generates predictions,
-stores them in memory, and logs decisions.
-"""
-
 import time
+import numpy as np
 from datetime import datetime
-
 from bitcoin_agent import BitcoinAnalysisAgent
 from memory import save_prediction
 
-# =========================
-# CONFIGURAÇÃO DO AGENTE
-# =========================
-
-ANALYSIS_DAYS = 180          # janela histórica
-FORECAST_DAYS = 7            # previsão futura (D+7)
-INTERVAL_SECONDS = 60 * 60   # 1 hora entre ciclos
-
-# =========================
-# LOOP AUTÔNOMO
-# =========================
+INTERVAL = 3600
+FORECAST_DAYS = 7
 
 def run_agent():
-    print("=" * 60)
-    print("Starting Autonomous Bitcoin Agent")
-    print("=" * 60)
-
-    # verbose=False → logs limpos
-    agent = BitcoinAnalysisAgent(verbose=False)
+    agent = BitcoinAnalysisAgent()
 
     while True:
-        cycle_start = datetime.now()
-        print(f"\n[{cycle_start.isoformat()}] New cycle started")
+        print("\nNew cycle:", datetime.now().isoformat())
+        agent.fetch_bitcoin_data()
+        results = agent.find_approximations()
 
-        try:
-            # 1. Coleta de dados
-            data = agent.fetch_bitcoin_data(days=ANALYSIS_DAYS)
-            if data is None:
-                print("Failed to fetch data. Skipping cycle.")
-                time.sleep(INTERVAL_SECONDS)
-                continue
+        # escolhe melhor modelo por R²
+        best = max(
+            ((k,v) for k,v in results.items() if "r2" in v),
+            key=lambda x: x[1]["r2"]
+        )
 
-            # 2. Análise
-            agent.find_approximations()
+        x_future = np.arange(len(agent.prices), len(agent.prices)+FORECAST_DAYS)
+        price = float(best[1]["prediction"](x_future)[-1])
 
-            # 3. Previsão futura (AGORA PELO AGENTE)
-            forecast = agent.forecast(days_ahead=FORECAST_DAYS)
+        save_prediction(best[0], price, best[1]["r2"])
 
-            if forecast is None:
-                print("No valid forecast generated.")
-            else:
-                # 4. Persistência (memória)
-                save_prediction(
-                    model=forecast["model"],
-                    price=forecast["predicted_price"],
-                    confidence=forecast["confidence"]
-                )
+        advice = agent.investment_advice()
+        print("Model:", best[0])
+        print("Forecast:", price)
+        print("Advice:", advice["recommendation"])
 
-                print(
-                    f"Forecast saved | "
-                    f"Model: {forecast['model']} | "
-                    f"Price (D+{FORECAST_DAYS}): "
-                    f"${forecast['predicted_price']:,.2f} | "
-                    f"Confidence: {forecast['confidence']:.2f}"
-                )
-
-            # 5. Log de status
-            advice = agent.investment_advice()
-            if advice:
-                print(f"Agent recommendation: {advice['recommendation']}")
-
-        except Exception as e:
-            print("Agent error:", e)
-
-        finally:
-            minutes = max(INTERVAL_SECONDS // 60, 1)
-            print(f"Cycle completed. Sleeping for {minutes} minutes.")
-            time.sleep(INTERVAL_SECONDS)
-
-# =========================
-# ENTRY POINT
-# =========================
+        time.sleep(INTERVAL)
 
 if __name__ == "__main__":
     run_agent()
