@@ -372,7 +372,7 @@ with indicator_tabs[0]:
             title="Oscilador Estocástico",
             xaxis_title="Data",
             yaxis_title="Valor (%)",
-            yaxis=dict(range=[-200, 200]),
+            yaxis=dict(range=[-160, 160]),
             hovermode='x unified',
             height=400
         )
