@@ -9,7 +9,7 @@ from bitcoin_agent import BitcoinAnalysisAgent
 # =========================
 
 st.set_page_config(
-    page_title="Bitcoin Quant Agent",
+    page_title="Bitcoin Agent",
     layout="wide"
 )
 
